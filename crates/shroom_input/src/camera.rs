@@ -8,8 +8,8 @@ pub struct GameCamera;
 
 const CAMERA_SPEED: f32 = 300.0;
 const ZOOM_SPEED: f32 = 0.1;
-const MIN_ZOOM: f32 = 0.2;
-const MAX_ZOOM: f32 = 3.0;
+const MIN_ZOOM: f32 = 0.15;
+const MAX_ZOOM: f32 = 4.0;
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, GameCamera, Transform::from_xyz(640.0, 480.0, 0.0)));
@@ -48,5 +48,16 @@ pub fn camera_system(
         for event in scroll_events.read() {
             ortho.scale = (ortho.scale - event.y * ZOOM_SPEED).clamp(MIN_ZOOM, MAX_ZOOM);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zoom_range_matches_spec() {
+        assert_eq!(MIN_ZOOM, 0.15);
+        assert_eq!(MAX_ZOOM, 4.0);
     }
 }
