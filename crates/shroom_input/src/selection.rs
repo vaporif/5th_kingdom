@@ -19,9 +19,17 @@ pub fn selection_system(
     grid: Res<GridWorld>,
     tiles: Query<&Tile>,
     mut selected: ResMut<SelectedRegion>,
+    ui_interactions: Query<&Interaction, With<Button>>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
         return;
+    }
+
+    // Don't process world clicks when UI buttons are being pressed
+    for interaction in ui_interactions.iter() {
+        if *interaction != Interaction::None {
+            return;
+        }
     }
 
     let Ok(window) = windows.single() else {
