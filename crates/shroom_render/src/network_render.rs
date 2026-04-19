@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet, VecDeque};
+
 use bevy::{
     asset::RenderAssetUsages,
     mesh::PrimitiveTopology,
@@ -7,30 +9,26 @@ use bevy::{
     shader::ShaderRef,
     sprite_render::{AlphaMode2d, Material2d},
 };
+use shroom_core::{RegionId, RivalId};
 
-use crate::data_layer::{BranchGraph, RivalBranchGraph, TipPositions};
+use crate::data_layer::{BranchEdge, BranchGraph, RivalBranchGraph};
 use crate::terrain_render::TILE_SIZE;
 
 const SPLINE_SAMPLES: usize = 12;
 const STRANDS_PER_EDGE: usize = 3;
+const STRAND_HALF_WIDTH: f32 = 1.5;
 
 #[derive(Component)]
-pub struct NetworkPathSprite;
+pub struct BranchTreeMesh;
 
-#[derive(Component)]
-pub struct NetworkMesh;
-
-#[derive(Component)]
-pub struct JunctionMesh;
-
-/// Packed uniform struct — matches the WGSL `NetworkUniforms` struct exactly.
+/// Packed uniform struct -- matches the WGSL `NetworkUniforms` struct exactly.
 #[derive(ShaderType, Debug, Clone)]
 pub struct NetworkUniforms {
-    pub core_color: LinearRgba, // vec4<f32> — 16 bytes
-    pub body_color: LinearRgba, // vec4<f32> — 16 bytes
-    pub biomass: f32,           // f32 — 4 bytes
-    pub time: f32,              // f32 — 4 bytes
-    pub _padding: Vec2,         // pad to 16-byte boundary — 8 bytes
+    pub core_color: LinearRgba, // vec4<f32> -- 16 bytes
+    pub body_color: LinearRgba, // vec4<f32> -- 16 bytes
+    pub biomass: f32,           // f32 -- 4 bytes
+    pub time: f32,              // f32 -- 4 bytes
+    pub _padding: Vec2,         // pad to 16-byte boundary -- 8 bytes
 }
 
 #[derive(AsBindGroup, Asset, TypePath, Debug, Clone)]
@@ -131,7 +129,7 @@ fn build_spline_mesh_with_wobble(
     build_spline_mesh_inner(from, to, half_width, Some(seed))
 }
 
-/// Shared implementation — `wobble_seed = None` for straight, `Some(seed)` for wobble.
+/// Shared implementation -- `wobble_seed = None` for straight, `Some(seed)` for wobble.
 fn build_spline_mesh_inner(
     from: Vec2,
     to: Vec2,
@@ -216,9 +214,14 @@ fn build_spline_mesh_inner(
     (mesh, points)
 }
 
-/// Count how many edges connect to each node for junction detection.
-fn count_node_edges(graph: &BranchGraph) -> std::collections::HashMap<IVec2, usize> {
-    let mut counts: std::collections::HashMap<IVec2, usize> = std::collections::HashMap::new();
+// ---------------------------------------------------------------------------
+// Step 1.2: Node degree computation
+// ---------------------------------------------------------------------------
+
+/// Count how many edges connect to each node for junction/leaf detection.
+#[cfg(test)]
+fn compute_node_degrees(graph: &BranchGraph) -> HashMap<IVec2, usize> {
+    let mut counts: HashMap<IVec2, usize> = HashMap::new();
     for edge in &graph.edges {
         *counts.entry(edge.from).or_default() += 1;
         *counts.entry(edge.to).or_default() += 1;
@@ -226,103 +229,382 @@ fn count_node_edges(graph: &BranchGraph) -> std::collections::HashMap<IVec2, usi
     counts
 }
 
-/// Blob radius for a network node based on biomass.
-fn blob_radius(biomass: f32) -> f32 {
-    TILE_SIZE * 0.55 + biomass.clamp(0.0, 5.0) * 2.0
+// ---------------------------------------------------------------------------
+// Step 1.3: Grouping functions
+// ---------------------------------------------------------------------------
+
+/// Group player nodes by region, returning position and biomass pairs.
+#[must_use]
+fn group_player_nodes_by_region(graph: &BranchGraph) -> HashMap<RegionId, Vec<(IVec2, f32)>> {
+    let mut groups: HashMap<RegionId, Vec<(IVec2, f32)>> = HashMap::new();
+    for node in graph.nodes.values() {
+        groups
+            .entry(node.region_id)
+            .or_default()
+            .push((node.pos, node.biomass));
+    }
+    groups
 }
+
+/// Group rival nodes by rival_id, returning position and biomass pairs.
+#[must_use]
+fn group_rival_nodes_by_id(graph: &RivalBranchGraph) -> HashMap<RivalId, Vec<(IVec2, f32)>> {
+    let mut groups: HashMap<RivalId, Vec<(IVec2, f32)>> = HashMap::new();
+    for node in graph.nodes.values() {
+        groups
+            .entry(node.rival_id)
+            .or_default()
+            .push((node.pos, node.biomass));
+    }
+    groups
+}
+
+// ---------------------------------------------------------------------------
+// Step 1.4: Root picking and BFS
+// ---------------------------------------------------------------------------
+
+/// Pick the node closest to the centroid of the group as root.
+#[must_use]
+fn pick_root_node(nodes: &[(IVec2, f32)]) -> IVec2 {
+    assert!(!nodes.is_empty(), "cannot pick root from empty node list");
+
+    #[allow(clippy::cast_precision_loss)]
+    let centroid = nodes.iter().map(|(pos, _)| pos.as_vec2()).sum::<Vec2>() / nodes.len() as f32;
+
+    nodes
+        .iter()
+        .min_by(|(a, _), (b, _)| {
+            let da = a.as_vec2().distance_squared(centroid);
+            let db = b.as_vec2().distance_squared(centroid);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(pos, _)| *pos)
+        .expect("nodes is non-empty")
+}
+
+/// BFS from root through edges that connect nodes in `node_set`.
+/// Returns (parent, child) directed edge pairs in BFS order.
+#[must_use]
+fn bfs_edges(root: IVec2, node_set: &HashSet<IVec2>, edges: &[BranchEdge]) -> Vec<(IVec2, IVec2)> {
+    // Build adjacency list restricted to node_set
+    let mut adjacency: HashMap<IVec2, Vec<IVec2>> = HashMap::new();
+    for edge in edges {
+        if node_set.contains(&edge.from) && node_set.contains(&edge.to) {
+            adjacency.entry(edge.from).or_default().push(edge.to);
+            adjacency.entry(edge.to).or_default().push(edge.from);
+        }
+    }
+
+    let mut visited = HashSet::new();
+    visited.insert(root);
+    let mut queue = VecDeque::new();
+    queue.push_back(root);
+    let mut result = Vec::new();
+
+    while let Some(current) = queue.pop_front() {
+        if let Some(neighbors) = adjacency.get(&current) {
+            for &neighbor in neighbors {
+                if visited.insert(neighbor) {
+                    result.push((current, neighbor));
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+    }
+
+    result
+}
+
+// ---------------------------------------------------------------------------
+// Step 1.5: Decorative branch generation
+// ---------------------------------------------------------------------------
+
+/// Generate 0-2 short decorative sub-branches at a node, scaling with biomass.
+/// Each branch is returned as (start, end) in world coordinates.
+#[must_use]
+fn generate_decorative_branches(
+    world_pos: Vec2,
+    main_dir: Vec2,
+    biomass: f32,
+    seed: u32,
+) -> Vec<(Vec2, Vec2)> {
+    // Determine branch count: 0 for low biomass, up to 2 for high
+    let hash0 = seed.wrapping_mul(2_654_435_761);
+    #[allow(clippy::cast_precision_loss)]
+    let rand0 = hash0 as f32 / u32::MAX as f32;
+
+    // biomass < 1.0 -> 0 branches, 1.0..3.0 -> 0-1, 3.0+ -> 1-2
+    let max_branches = if biomass < 1.0 {
+        0
+    } else if biomass < 3.0 {
+        if rand0 < 0.5 {
+            1
+        } else {
+            0
+        }
+    } else {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            1 + (rand0 * 1.5).min(1.0) as usize
+        }
+    };
+
+    let mut branches = Vec::with_capacity(max_branches);
+    let perp = Vec2::new(-main_dir.y, main_dir.x);
+
+    for i in 0..max_branches {
+        #[allow(clippy::cast_possible_truncation)]
+        let h = seed
+            .wrapping_mul(73_856_093)
+            .wrapping_add(i as u32 * 19_349_669);
+        #[allow(clippy::cast_precision_loss)]
+        let angle_frac = (h as f32 / u32::MAX as f32) * 2.0 - 1.0;
+
+        // Length: 0.5 to 1.5 tiles
+        let h2 = h.wrapping_mul(2_654_435_761);
+        #[allow(clippy::cast_precision_loss)]
+        let len_frac = h2 as f32 / u32::MAX as f32;
+        let length = (0.5 + len_frac) * TILE_SIZE;
+
+        // Direction is a blend of main_dir forward component + perpendicular splay
+        let dir = (main_dir * 0.3 + perp * angle_frac).normalize_or_zero();
+        let end = world_pos + dir * length;
+        branches.push((world_pos, end));
+    }
+
+    branches
+}
+
+// ---------------------------------------------------------------------------
+// Step 1.6: Tip forking
+// ---------------------------------------------------------------------------
+
+/// Generate 2-3 daughter forks at a leaf tip node, splaying outward.
+#[must_use]
+fn generate_tip_forks(world_pos: Vec2, approach_dir: Vec2, seed: u32) -> Vec<(Vec2, Vec2)> {
+    let hash0 = seed.wrapping_mul(2_654_435_761);
+    #[allow(clippy::cast_precision_loss)]
+    let count = if (hash0 as f32 / u32::MAX as f32) < 0.5 {
+        2
+    } else {
+        3
+    };
+
+    let mut forks = Vec::with_capacity(count);
+    let perp = Vec2::new(-approach_dir.y, approach_dir.x);
+
+    for i in 0..count {
+        #[allow(clippy::cast_possible_truncation)]
+        let h = seed
+            .wrapping_mul(73_856_093)
+            .wrapping_add(i as u32 * 19_349_669);
+        #[allow(clippy::cast_precision_loss)]
+        let splay = (h as f32 / u32::MAX as f32) - 0.5; // [-0.5, 0.5]
+
+        // Spread the daughters: offset angle from center
+        #[allow(clippy::cast_precision_loss)]
+        let base_spread = (i as f32 / (count as f32 - 0.5)) - 0.5; // roughly [-0.5, 0.5]
+
+        let dir = (approach_dir * 0.7 + perp * (base_spread + splay * 0.3)).normalize_or_zero();
+        let length = TILE_SIZE * (0.4 + splay.abs() * 0.4);
+        let end = world_pos + dir * length;
+        forks.push((world_pos, end));
+    }
+
+    forks
+}
+
+// ---------------------------------------------------------------------------
+// Step 1.7: Core geometry builder
+// ---------------------------------------------------------------------------
+
+/// Build all spline meshes for a branch tree from a set of nodes and edges.
+///
+/// Returns a list of (mesh, centroid_offset) pairs. Each mesh is a single strand.
+/// `max_decorative` controls decorative sub-branch count (0 for rivals).
+/// `tip_fork` enables tip forking at degree-1 leaf nodes.
+#[must_use]
+fn build_branch_tree(
+    nodes: &[(IVec2, f32)],
+    edges: &[BranchEdge],
+    max_decorative: usize,
+    tip_fork: bool,
+) -> Vec<(Mesh, Vec2)> {
+    if nodes.is_empty() {
+        return Vec::new();
+    }
+
+    let node_set: HashSet<IVec2> = nodes.iter().map(|(pos, _)| *pos).collect();
+    let biomass_map: HashMap<IVec2, f32> = nodes.iter().copied().collect();
+    let root = pick_root_node(nodes);
+    let tree_edges = bfs_edges(root, &node_set, edges);
+
+    // Compute degrees on a local mini-graph for leaf detection
+    let mut degrees: HashMap<IVec2, usize> = HashMap::new();
+    for (parent, child) in &tree_edges {
+        *degrees.entry(*parent).or_default() += 1;
+        *degrees.entry(*child).or_default() += 1;
+    }
+
+    let mut result: Vec<(Mesh, Vec2)> = Vec::new();
+
+    for (idx, (parent, child)) in tree_edges.iter().enumerate() {
+        let from_world = parent.as_vec2() * TILE_SIZE;
+        let to_world = child.as_vec2() * TILE_SIZE;
+
+        // Generate STRANDS_PER_EDGE spline strands per edge
+        for strand in 0..STRANDS_PER_EDGE {
+            #[allow(clippy::cast_possible_truncation)]
+            let seed = (idx as u32)
+                .wrapping_mul(2_654_435_761)
+                .wrapping_add(strand as u32 * 73_856_093);
+            let (mesh, _points) =
+                build_spline_mesh_with_wobble(from_world, to_world, STRAND_HALF_WIDTH, seed);
+            let center = (from_world + to_world) * 0.5;
+            result.push((mesh, center));
+        }
+
+        // Decorative branches at child node
+        if max_decorative > 0 {
+            let dir = (to_world - from_world).normalize_or_zero();
+            let child_biomass = biomass_map.get(child).copied().unwrap_or(1.0);
+            #[allow(clippy::cast_possible_truncation)]
+            let deco_seed = (idx as u32).wrapping_mul(19_349_669);
+            let decos = generate_decorative_branches(to_world, dir, child_biomass, deco_seed);
+            for (deco_start, deco_end) in decos.into_iter().take(max_decorative) {
+                let (mesh, _) = build_spline_mesh_with_wobble(
+                    deco_start,
+                    deco_end,
+                    STRAND_HALF_WIDTH * 0.7,
+                    deco_seed.wrapping_add(42),
+                );
+                let center = (deco_start + deco_end) * 0.5;
+                result.push((mesh, center));
+            }
+        }
+
+        // Tip forks at degree-1 leaf child nodes
+        if tip_fork {
+            let child_degree = degrees.get(child).copied().unwrap_or(0);
+            if child_degree == 1 {
+                let dir = (to_world - from_world).normalize_or_zero();
+                #[allow(clippy::cast_possible_truncation)]
+                let fork_seed = (idx as u32).wrapping_mul(91_939_117);
+                let forks = generate_tip_forks(to_world, dir, fork_seed);
+                for (fork_start, fork_end) in forks {
+                    let (mesh, _) = build_spline_mesh_with_wobble(
+                        fork_start,
+                        fork_end,
+                        STRAND_HALF_WIDTH * 0.5,
+                        fork_seed.wrapping_add(7),
+                    );
+                    let center = (fork_start + fork_end) * 0.5;
+                    result.push((mesh, center));
+                }
+            }
+        }
+    }
+
+    result
+}
+
+// ---------------------------------------------------------------------------
+// Step 1.8: Render system
+// ---------------------------------------------------------------------------
 
 pub fn network_render_system(
     mut commands: Commands,
     graph: Res<BranchGraph>,
     rival_graph: Res<RivalBranchGraph>,
-    tip_positions: Res<TipPositions>,
-    existing_meshes: Query<Entity, With<NetworkMesh>>,
-    existing_junctions: Query<Entity, With<JunctionMesh>>,
-    existing_sprites: Query<Entity, With<NetworkPathSprite>>,
+    existing: Query<Entity, With<BranchTreeMesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut net_materials: ResMut<Assets<NetworkMaterial>>,
     time: Res<Time>,
 ) {
-    for entity in existing_meshes.iter() {
-        commands.entity(entity).despawn();
+    if !graph.is_changed() && !rival_graph.is_changed() {
+        return;
     }
-    for entity in existing_junctions.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in existing_sprites.iter() {
+
+    for entity in existing.iter() {
         commands.entity(entity).despawn();
     }
 
     let elapsed = time.elapsed_secs();
 
-    // Player network: one blob per node — overlapping circles merge into organic mass
-    for (pos, node) in &graph.nodes {
-        let core = region_color_linear(node.specialization);
-        let body = body_color_from_core(core);
-        let radius = blob_radius(node.biomass);
-        let world_pos = pos.as_vec2() * TILE_SIZE;
+    // --- Player network: group by region, build tree per region ---
+    let player_groups = group_player_nodes_by_region(&graph);
+    for (region_id, region_nodes) in &player_groups {
+        // Determine specialization from any node in this region
+        let spec = graph
+            .nodes
+            .values()
+            .find(|n| n.region_id == *region_id)
+            .and_then(|n| n.specialization);
 
-        commands.spawn((
-            NetworkMesh,
-            Mesh2d(meshes.add(Rectangle::new(radius * 2.0, radius * 2.0))),
-            MeshMaterial2d(net_materials.add(NetworkMaterial {
-                uniforms: NetworkUniforms {
-                    core_color: core,
-                    body_color: body,
-                    biomass: node.biomass,
-                    time: elapsed,
-                    _padding: Vec2::ZERO,
-                },
-            })),
-            Transform::from_translation(world_pos.extend(1.0)),
-        ));
+        let core = region_color_linear(spec);
+        let body = body_color_from_core(core);
+        let avg_biomass = if region_nodes.is_empty() {
+            1.0
+        } else {
+            #[allow(clippy::cast_precision_loss)]
+            {
+                region_nodes.iter().map(|(_, b)| b).sum::<f32>() / region_nodes.len() as f32
+            }
+        };
+
+        let tree_meshes = build_branch_tree(region_nodes, &graph.edges, 2, true);
+
+        for (mesh, _center) in tree_meshes {
+            commands.spawn((
+                BranchTreeMesh,
+                Mesh2d(meshes.add(mesh)),
+                MeshMaterial2d(net_materials.add(NetworkMaterial {
+                    uniforms: NetworkUniforms {
+                        core_color: core,
+                        body_color: body,
+                        biomass: avg_biomass,
+                        time: elapsed,
+                        _padding: Vec2::ZERO,
+                    },
+                })),
+                Transform::from_translation(Vec3::ZERO.with_z(1.0)),
+            ));
+        }
     }
 
-    // Rival network: same blob approach, crimson
+    // --- Rival network: group by rival_id, build tree without decoratives ---
     let rival_core = LinearRgba::new(0.7, 0.1, 0.1, 1.0);
     let rival_body = LinearRgba::new(0.3, 0.05, 0.05, 0.7);
 
-    for (pos, node) in &rival_graph.nodes {
-        let radius = blob_radius(node.biomass);
-        let world_pos = pos.as_vec2() * TILE_SIZE;
+    let rival_groups = group_rival_nodes_by_id(&rival_graph);
+    for rival_nodes in rival_groups.values() {
+        let avg_biomass = if rival_nodes.is_empty() {
+            1.0
+        } else {
+            #[allow(clippy::cast_precision_loss)]
+            {
+                rival_nodes.iter().map(|(_, b)| b).sum::<f32>() / rival_nodes.len() as f32
+            }
+        };
 
-        commands.spawn((
-            NetworkMesh,
-            Mesh2d(meshes.add(Rectangle::new(radius * 2.0, radius * 2.0))),
-            MeshMaterial2d(net_materials.add(NetworkMaterial {
-                uniforms: NetworkUniforms {
-                    core_color: rival_core,
-                    body_color: rival_body,
-                    biomass: node.biomass,
-                    time: elapsed,
-                    _padding: Vec2::ZERO,
-                },
-            })),
-            Transform::from_translation(world_pos.extend(1.0)),
-        ));
-    }
+        let tree_meshes = build_branch_tree(rival_nodes, &rival_graph.edges, 0, false);
 
-    // Tip glow — pulsing blobs at growth tips
-    for (pos, spec) in &tip_positions.tips {
-        let core = region_color_linear(*spec);
-        let world_pos = pos.as_vec2() * TILE_SIZE;
-        let pulse = (elapsed * 3.0).sin() * 0.5 + 0.5;
-        let radius = TILE_SIZE * 0.5 + pulse * 6.0;
-
-        commands.spawn((
-            NetworkMesh,
-            Mesh2d(meshes.add(Rectangle::new(radius * 2.0, radius * 2.0))),
-            MeshMaterial2d(net_materials.add(NetworkMaterial {
-                uniforms: NetworkUniforms {
-                    core_color: core,
-                    body_color: body_color_from_core(core),
-                    biomass: 3.0 + pulse * 2.0,
-                    time: elapsed,
-                    _padding: Vec2::ZERO,
-                },
-            })),
-            Transform::from_translation(world_pos.extend(1.5)),
-        ));
+        for (mesh, _center) in tree_meshes {
+            commands.spawn((
+                BranchTreeMesh,
+                Mesh2d(meshes.add(mesh)),
+                MeshMaterial2d(net_materials.add(NetworkMaterial {
+                    uniforms: NetworkUniforms {
+                        core_color: rival_core,
+                        body_color: rival_body,
+                        biomass: avg_biomass,
+                        time: elapsed,
+                        _padding: Vec2::ZERO,
+                    },
+                })),
+                Transform::from_translation(Vec3::ZERO.with_z(1.0)),
+            ));
+        }
     }
 }
 
@@ -544,5 +826,284 @@ mod tests {
         let body = body_color_from_core(core);
         assert!(body.red < core.red, "body red should be less than core red");
         assert_eq!(body.alpha, 0.7);
+    }
+
+    // --- Step 1.1: BranchTreeMesh component ---
+
+    #[test]
+    fn branch_tree_mesh_is_component() {
+        let mut world = World::new();
+        let entity = world.spawn(BranchTreeMesh).id();
+        assert!(world.get::<BranchTreeMesh>(entity).is_some());
+    }
+
+    // --- Step 1.2: compute_node_degrees ---
+
+    #[test]
+    fn compute_node_degrees_counts_edges() {
+        let mut graph = BranchGraph::default();
+        let a = IVec2::new(0, 0);
+        let b = IVec2::new(1, 0);
+        let c = IVec2::new(2, 0);
+
+        graph.edges.push(BranchEdge {
+            from: a,
+            to: b,
+            thickness: 1.0,
+        });
+        graph.edges.push(BranchEdge {
+            from: b,
+            to: c,
+            thickness: 1.0,
+        });
+
+        let degrees = compute_node_degrees(&graph);
+        assert_eq!(degrees[&a], 1);
+        assert_eq!(degrees[&b], 2);
+        assert_eq!(degrees[&c], 1);
+    }
+
+    // --- Step 1.3: Grouping functions ---
+
+    #[test]
+    fn group_player_nodes_by_region_groups_correctly() {
+        use crate::data_layer::BranchNode;
+
+        let mut graph = BranchGraph::default();
+        let r1 = RegionId(1);
+        let r2 = RegionId(2);
+
+        graph.nodes.insert(
+            IVec2::new(0, 0),
+            BranchNode {
+                pos: IVec2::new(0, 0),
+                biomass: 1.0,
+                specialization: None,
+                region_id: r1,
+            },
+        );
+        graph.nodes.insert(
+            IVec2::new(1, 0),
+            BranchNode {
+                pos: IVec2::new(1, 0),
+                biomass: 2.0,
+                specialization: None,
+                region_id: r1,
+            },
+        );
+        graph.nodes.insert(
+            IVec2::new(5, 5),
+            BranchNode {
+                pos: IVec2::new(5, 5),
+                biomass: 3.0,
+                specialization: None,
+                region_id: r2,
+            },
+        );
+
+        let groups = group_player_nodes_by_region(&graph);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[&r1].len(), 2);
+        assert_eq!(groups[&r2].len(), 1);
+    }
+
+    #[test]
+    fn group_rival_nodes_by_id_groups_correctly() {
+        use crate::data_layer::RivalBranchNode;
+
+        let mut graph = RivalBranchGraph::default();
+        let r1 = RivalId(0);
+        let r2 = RivalId(1);
+
+        graph.nodes.insert(
+            IVec2::new(0, 0),
+            RivalBranchNode {
+                pos: IVec2::new(0, 0),
+                biomass: 1.0,
+                rival_id: r1,
+            },
+        );
+        graph.nodes.insert(
+            IVec2::new(1, 0),
+            RivalBranchNode {
+                pos: IVec2::new(1, 0),
+                biomass: 2.0,
+                rival_id: r2,
+            },
+        );
+
+        let groups = group_rival_nodes_by_id(&graph);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[&r1].len(), 1);
+        assert_eq!(groups[&r2].len(), 1);
+    }
+
+    // --- Step 1.4: pick_root_node and bfs_edges ---
+
+    #[test]
+    fn pick_root_node_selects_centroid_closest() {
+        let nodes = vec![
+            (IVec2::new(0, 0), 1.0),
+            (IVec2::new(2, 0), 1.0),
+            (IVec2::new(4, 0), 1.0),
+        ];
+        // Centroid is (2, 0)
+        let root = pick_root_node(&nodes);
+        assert_eq!(root, IVec2::new(2, 0));
+    }
+
+    #[test]
+    fn bfs_edges_traverses_connected_graph() {
+        let nodes: HashSet<IVec2> = [IVec2::new(0, 0), IVec2::new(1, 0), IVec2::new(2, 0)]
+            .into_iter()
+            .collect();
+        let edges = vec![
+            BranchEdge {
+                from: IVec2::new(0, 0),
+                to: IVec2::new(1, 0),
+                thickness: 1.0,
+            },
+            BranchEdge {
+                from: IVec2::new(1, 0),
+                to: IVec2::new(2, 0),
+                thickness: 1.0,
+            },
+        ];
+
+        let result = bfs_edges(IVec2::new(0, 0), &nodes, &edges);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], (IVec2::new(0, 0), IVec2::new(1, 0)));
+        assert_eq!(result[1], (IVec2::new(1, 0), IVec2::new(2, 0)));
+    }
+
+    #[test]
+    fn bfs_edges_skips_nodes_outside_set() {
+        let nodes: HashSet<IVec2> = [IVec2::new(0, 0), IVec2::new(1, 0)].into_iter().collect();
+        let edges = vec![
+            BranchEdge {
+                from: IVec2::new(0, 0),
+                to: IVec2::new(1, 0),
+                thickness: 1.0,
+            },
+            BranchEdge {
+                from: IVec2::new(1, 0),
+                to: IVec2::new(2, 0), // not in set
+                thickness: 1.0,
+            },
+        ];
+
+        let result = bfs_edges(IVec2::new(0, 0), &nodes, &edges);
+        assert_eq!(result.len(), 1);
+    }
+
+    // --- Step 1.5: Decorative branches ---
+
+    #[test]
+    fn decorative_branches_scale_with_biomass() {
+        let low = generate_decorative_branches(Vec2::new(48.0, 48.0), Vec2::new(0.0, 1.0), 0.5, 42);
+        let high =
+            generate_decorative_branches(Vec2::new(48.0, 48.0), Vec2::new(0.0, 1.0), 5.0, 42);
+        assert!(high.len() >= low.len());
+    }
+
+    #[test]
+    fn decorative_branches_are_short() {
+        let branches =
+            generate_decorative_branches(Vec2::new(48.0, 48.0), Vec2::new(0.0, 1.0), 3.0, 7);
+        for (start, end) in &branches {
+            let length = (*end - *start).length();
+            assert!(
+                length <= 1.5 * TILE_SIZE + 1.0,
+                "decorative branch too long: {length}"
+            );
+        }
+    }
+
+    // --- Step 1.6: Tip forking ---
+
+    #[test]
+    fn tip_forks_produce_2_to_3_daughters() {
+        let forks = generate_tip_forks(Vec2::new(96.0, 96.0), Vec2::new(1.0, 0.0), 42);
+        assert!(
+            forks.len() >= 2 && forks.len() <= 3,
+            "expected 2-3 forks, got {}",
+            forks.len()
+        );
+    }
+
+    #[test]
+    fn tip_forks_splay_outward() {
+        let parent_dir = Vec2::new(1.0, 0.0);
+        let forks = generate_tip_forks(Vec2::new(0.0, 0.0), parent_dir, 42);
+        for (start, end) in &forks {
+            let fork_dir = (*end - *start).normalize_or_zero();
+            let dot = fork_dir.dot(parent_dir);
+            assert!(
+                dot > -0.3,
+                "fork should splay outward, not backward: dot={dot}"
+            );
+        }
+    }
+
+    // --- Step 1.7: build_branch_tree ---
+
+    #[test]
+    fn build_branch_tree_produces_meshes_for_edges() {
+        let nodes = vec![
+            (IVec2::new(0, 0), 1.0),
+            (IVec2::new(1, 0), 2.0),
+            (IVec2::new(2, 0), 1.0),
+        ];
+        let edges = vec![
+            BranchEdge {
+                from: IVec2::new(0, 0),
+                to: IVec2::new(1, 0),
+                thickness: 1.0,
+            },
+            BranchEdge {
+                from: IVec2::new(1, 0),
+                to: IVec2::new(2, 0),
+                thickness: 1.0,
+            },
+        ];
+
+        let result = build_branch_tree(&nodes, &edges, 2, true);
+        // At least 2 edges * STRANDS_PER_EDGE strands
+        assert!(
+            result.len() >= 2 * STRANDS_PER_EDGE,
+            "expected at least {} meshes, got {}",
+            2 * STRANDS_PER_EDGE,
+            result.len()
+        );
+    }
+
+    #[test]
+    fn build_branch_tree_no_decoratives_for_rivals() {
+        let nodes = vec![
+            (IVec2::new(0, 0), 3.0),
+            (IVec2::new(1, 0), 3.0),
+            (IVec2::new(2, 0), 3.0),
+        ];
+        let edges = vec![
+            BranchEdge {
+                from: IVec2::new(0, 0),
+                to: IVec2::new(1, 0),
+                thickness: 1.0,
+            },
+            BranchEdge {
+                from: IVec2::new(1, 0),
+                to: IVec2::new(2, 0),
+                thickness: 1.0,
+            },
+        ];
+
+        let with_deco = build_branch_tree(&nodes, &edges, 2, true);
+        let without_deco = build_branch_tree(&nodes, &edges, 0, false);
+        assert!(
+            with_deco.len() >= without_deco.len(),
+            "decoratives should add meshes: with={} without={}",
+            with_deco.len(),
+            without_deco.len()
+        );
     }
 }

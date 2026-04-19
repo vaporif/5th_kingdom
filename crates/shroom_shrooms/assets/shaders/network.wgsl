@@ -30,42 +30,35 @@ fn noise2d(p: vec2<f32>) -> f32 {
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let uv = mesh.uv;
-    let center = vec2<f32>(0.5, 0.5);
-    let dist = distance(uv, center) * 2.0;
+    let u = uv.x;
+    let v = uv.y;
+    let dist = abs(u);
 
-    // Noise-distorted edge for organic shape
-    let edge_noise = noise2d(uv * 8.0 + material.time * 0.1) * 0.15;
-    let fine_noise = noise2d(uv * 20.0) * 0.08;
-    let distorted_dist = dist + edge_noise + fine_noise;
+    let edge_noise = noise2d(vec2<f32>(v * 12.0, u * 4.0) + material.time * 0.05) * 0.1;
+    let distorted_dist = dist + edge_noise;
 
-    // Soft radial falloff — discard fully transparent pixels
-    let outer_edge = smoothstep(1.0, 0.65, distorted_dist);
+    let outer_edge = smoothstep(1.0, 0.5, distorted_dist);
     if outer_edge < 0.01 {
         discard;
     }
 
     let glow = clamp(material.biomass * 0.15, 0.05, 0.8);
 
-    // Internal fibrous texture
-    let fiber1 = noise2d(uv * 12.0 + vec2<f32>(material.time * 0.05, 0.0));
-    let fiber2 = noise2d(uv * 25.0 + vec2<f32>(0.0, material.time * 0.03));
+    let fiber1 = noise2d(vec2<f32>(u * 3.0, v * 15.0) + vec2<f32>(0.0, material.time * 0.03));
+    let fiber2 = noise2d(vec2<f32>(u * 6.0, v * 30.0));
     let fibers = fiber1 * 0.6 + fiber2 * 0.4;
 
-    // Core glow at center
-    let core_strength = smoothstep(0.5, 0.0, distorted_dist) * glow;
+    let core_strength = smoothstep(0.4, 0.0, distorted_dist) * glow;
 
-    // Compose layers
     var color = material.body_color.rgb * (0.3 + fibers * 0.4);
     color = mix(color, material.core_color.rgb, core_strength);
 
-    // Edge glow ring
-    let edge_glow = smoothstep(0.9, 0.6, distorted_dist) * smoothstep(0.4, 0.7, distorted_dist);
-    color = color + material.core_color.rgb * edge_glow * glow * 0.5;
+    let edge_glow = smoothstep(0.9, 0.5, distorted_dist) * smoothstep(0.2, 0.5, distorted_dist);
+    color = color + material.core_color.rgb * edge_glow * glow * 0.4;
 
-    // Pulsing veins
-    let vein = smoothstep(0.48, 0.5, noise2d(uv * 15.0 + material.time * 0.08));
-    color = color + material.core_color.rgb * vein * 0.15 * glow;
+    let tip_pulse = smoothstep(0.7, 1.0, v) * (sin(material.time * 3.0) * 0.5 + 0.5);
+    color = color + material.core_color.rgb * tip_pulse * 0.3;
 
-    let alpha = outer_edge * (0.5 + core_strength * 0.5);
+    let alpha = outer_edge * (0.4 + core_strength * 0.6);
     return vec4<f32>(color, alpha);
 }
