@@ -158,6 +158,10 @@ pub fn terrain_generation(
 
     // Spawn player starting region near center
     let player_rid = region_states.create_region();
+    if let Some(state) = region_states.get_mut(player_rid) {
+        state.nutrients = 100.0;
+        state.energy = 20.0;
+    }
     let player_start = IVec2::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
     for dx in -2..=2 {
         for dy in -2..=2 {
