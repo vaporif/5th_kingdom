@@ -94,6 +94,20 @@ pub fn spawn_particle_pool(mut commands: Commands) {
     }
 }
 
+/// Keep the vignette quad centered on the camera so it covers the viewport.
+pub fn update_vignette(
+    camera_q: Query<&Transform, With<Camera2d>>,
+    mut vignette_q: Query<&mut Transform, (With<VignetteOverlay>, Without<Camera2d>)>,
+) {
+    let Ok(cam_tf) = camera_q.single() else {
+        return;
+    };
+    for mut vt in vignette_q.iter_mut() {
+        vt.translation.x = cam_tf.translation.x;
+        vt.translation.y = cam_tf.translation.y;
+    }
+}
+
 /// PostUpdate system: move each particle by its velocity and wrap it back onto the
 /// visible viewport edge when it drifts out of bounds.
 pub fn update_particles(

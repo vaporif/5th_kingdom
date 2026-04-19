@@ -160,17 +160,27 @@ pub fn extract_discovery_map(graph: Res<BranchGraph>, mut discovery: ResMut<Disc
     discovery.discovered.clear();
 
     let radius: i32 = 8;
-    let fully_hidden_threshold: f32 = 0.05;
-    let fully_visible_threshold: f32 = 0.3;
+    let fully_hidden_threshold: f32 = 0.02;
+    let fully_visible_threshold: f32 = 0.12;
 
     let mut influence_map: HashMap<IVec2, f32> = HashMap::new();
+
+    // Network tiles are always fully visible
+    for &node_pos in graph.nodes.keys() {
+        influence_map.insert(node_pos, f32::MAX);
+    }
 
     for &node_pos in graph.nodes.keys() {
         for dx in -radius..=radius {
             for dy in -radius..=radius {
                 let tile = node_pos + IVec2::new(dx, dy);
 
-                // Noise displacement using integer hash
+                // Skip tiles that are network nodes — already fully visible
+                if graph.nodes.contains_key(&tile) {
+                    continue;
+                }
+
+                // Noise displacement using integer hash to break up rectangular boundary
                 let noise_x = (tile.x.wrapping_mul(73_856_093) ^ tile.y.wrapping_mul(19_349_663))
                     as f32
                     / (i32::MAX as f32);
@@ -401,13 +411,13 @@ mod tests {
             .unwrap_or(0.0);
         assert_eq!(center, 1.0);
 
-        // Distance 2: partially discovered (inverse-square drops quickly)
+        // Distance 2: well-discovered with lowered thresholds
         let near = discovery
             .discovered
             .get(&IVec2::new(12, 10))
             .copied()
             .unwrap_or(0.0);
-        assert!(near > 0.0, "near tile should be discovered: {near}");
+        assert!(near > 0.5, "near tile should be well-discovered: {near}");
 
         // Distance 7: barely discovered (near edge of radius 8)
         let far = discovery

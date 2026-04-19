@@ -51,6 +51,7 @@ impl Plugin for RenderPlugin {
                     network_render::network_render_system,
                     entity_render::tip_render_system,
                     entity_render::organism_render_system,
+                    atmosphere::update_vignette,
                     atmosphere::update_particles,
                 ),
             );
