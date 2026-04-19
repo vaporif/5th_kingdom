@@ -36,6 +36,7 @@ impl Plugin for UiPlugin {
                     game_screens::game_outcome_system,
                     spec_picker_system,
                     spec_picker_click_system,
+                    spec_picker_highlight_system,
                 ),
             );
     }

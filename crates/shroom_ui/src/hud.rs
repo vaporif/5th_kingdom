@@ -152,10 +152,20 @@ pub fn update_hud(
                 let spec_name = state
                     .specialization
                     .map(|s| format!("{s:?}"))
-                    .unwrap_or_else(|| "Unspecialized".into());
+                    .unwrap_or_else(|| {
+                        state
+                            .target_specialization
+                            .map(|t| format!("-> {t:?}"))
+                            .unwrap_or_else(|| "Unspecialized".into())
+                    });
                 **text = format!(
-                    "{} | N:{:.0} E:{:.0} B:{:.0} | Tiles:{}",
-                    spec_name, state.nutrients, state.energy, state.biomass, state.tile_count
+                    "{} | N:{:.0} E:{:.0} B:{:.0} | Tiles:{} | Inv:{:.0}",
+                    spec_name,
+                    state.nutrients,
+                    state.energy,
+                    state.biomass,
+                    state.tile_count,
+                    state.specialization_investment
                 );
             }
             None => {

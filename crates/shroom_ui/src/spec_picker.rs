@@ -60,24 +60,20 @@ pub fn spec_picker_system(
     region_states: Res<RegionStates>,
     existing: Query<Entity, With<SpecPickerPanel>>,
 ) {
-    let should_show = selected
-        .region_id
-        .and_then(|rid| region_states.get(rid).map(|state| (rid, state)));
+    let should_show = selected.region_id.and_then(|rid| region_states.get(rid));
 
-    // Despawn if nothing selected or region doesn't exist
-    let Some((_rid, _state)) = should_show else {
+    let Some(_state) = should_show else {
         for entity in existing.iter() {
             commands.entity(entity).despawn();
         }
         return;
     };
 
-    // Already showing
+    // Already showing — don't respawn
     if !existing.is_empty() {
         return;
     }
 
-    // Spawn picker panel on the right side
     commands
         .spawn((
             SpecPickerPanel,
@@ -113,7 +109,7 @@ pub fn spec_picker_system(
                             align_items: AlignItems::Center,
                             ..default()
                         },
-                        BackgroundColor(color.with_alpha(0.6)),
+                        BackgroundColor(color.with_alpha(0.4)),
                         Button,
                     ))
                     .with_children(|btn| {
@@ -130,13 +126,11 @@ pub fn spec_picker_system(
         });
 }
 
-/// Handle clicks on specialization buttons.
+/// Handle clicks — set target specialization and highlight the active button.
 pub fn spec_picker_click_system(
-    mut commands: Commands,
     interactions: Query<(&Interaction, &SpecPickerButton), Changed<Interaction>>,
     selected: Res<SelectedRegion>,
     mut region_states: ResMut<RegionStates>,
-    panels: Query<Entity, With<SpecPickerPanel>>,
 ) {
     for (interaction, button) in interactions.iter() {
         if *interaction != Interaction::Pressed {
@@ -149,12 +143,32 @@ pub fn spec_picker_click_system(
         let Some(state) = region_states.get_mut(rid) else {
             continue;
         };
-
         state.target_specialization = Some(button.spec);
+    }
+}
 
-        // Close the panel after selection
-        for entity in panels.iter() {
-            commands.entity(entity).despawn();
+/// Update button colors to highlight the current target.
+pub fn spec_picker_highlight_system(
+    selected: Res<SelectedRegion>,
+    region_states: Res<RegionStates>,
+    mut buttons: Query<(&SpecPickerButton, &mut BackgroundColor)>,
+) {
+    let target = selected
+        .region_id
+        .and_then(|rid| region_states.get(rid))
+        .and_then(|s| s.target_specialization);
+
+    for (button, mut bg) in buttons.iter_mut() {
+        let base_color = SPECS
+            .iter()
+            .find(|(s, _, _)| *s == button.spec)
+            .map(|(_, _, c)| *c)
+            .unwrap_or(Color::srgb(0.3, 0.3, 0.3));
+
+        if target == Some(button.spec) {
+            *bg = BackgroundColor(base_color.with_alpha(1.0));
+        } else {
+            *bg = BackgroundColor(base_color.with_alpha(0.3));
         }
     }
 }
