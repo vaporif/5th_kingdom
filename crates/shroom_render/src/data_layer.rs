@@ -117,7 +117,11 @@ pub fn extract_tip_positions(
     }
 }
 
-pub fn extract_region_hulls(tiles: Query<(&GridPos, &Tile)>, mut hulls: ResMut<RegionHulls>) {
+pub fn extract_region_hulls(
+    tiles: Query<(&GridPos, &Tile)>,
+    layout: Res<HexLayout>,
+    mut hulls: ResMut<RegionHulls>,
+) {
     hulls.hulls.clear();
 
     let mut region_positions: HashMap<RegionId, Vec<Vec2>> = HashMap::default();
@@ -126,7 +130,7 @@ pub fn extract_region_hulls(tiles: Query<(&GridPos, &Tile)>, mut hulls: ResMut<R
             region_positions
                 .entry(rid)
                 .or_default()
-                .push(Vec2::new(gpos.0.x as f32, gpos.0.y as f32));
+                .push(layout.hex_to_world_pos(gpos.0));
         }
     }
 
@@ -179,25 +183,18 @@ pub fn extract_discovery_map(graph: Res<BranchGraph>, mut discovery: ResMut<Disc
                 continue;
             }
 
-            // Noise displacement using integer hash to break up the boundary
-            let noise_x = (tile.x.wrapping_mul(73_856_093) ^ tile.y.wrapping_mul(19_349_663))
-                as f32
-                / (i32::MAX as f32);
-            let noise_y = (tile.x.wrapping_mul(19_349_663) ^ tile.y.wrapping_mul(73_856_093))
-                as f32
-                / (i32::MAX as f32);
-            let noise_offset = Vec2::new(noise_x, noise_y) * 1.5;
+            let hex_dist = tile.unsigned_distance_to(node_pos) as f32;
 
-            let tile_pos = Vec2::new(tile.x as f32, tile.y as f32);
-            let node_vec = Vec2::new(node_pos.x as f32, node_pos.y as f32);
-            let displaced = tile_pos + noise_offset;
-            let dist = displaced.distance(node_vec);
+            // Noise jitter on the effective distance to break up the boundary
+            let noise = (tile.x.wrapping_mul(73_856_093) ^ tile.y.wrapping_mul(19_349_663)) as f32
+                / (i32::MAX as f32);
+            let jittered_dist = hex_dist + noise * 1.5;
 
-            if dist > radius as f32 {
+            if jittered_dist > radius as f32 {
                 continue;
             }
 
-            let influence = 1.0 / (dist * dist + 1.0);
+            let influence = 1.0 / (hex_dist * hex_dist + 1.0);
             *influence_map.entry(tile).or_default() += influence;
         }
     }
@@ -275,6 +272,7 @@ mod tests {
         app.init_resource::<BranchGraph>();
         app.init_resource::<TipPositions>();
         app.init_resource::<RegionHulls>();
+        app.insert_resource(create_hex_layout());
         app
     }
 
