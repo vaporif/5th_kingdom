@@ -2,7 +2,7 @@ cargo-features = ["codegen-backend"]
 
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/*", "bin"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,15 +12,15 @@ license = "MIT"
 [workspace.dependencies]
 bevy = "0.18"
 rand = "0.9"
-shroom_core = { path = "crates/shroom_core" }
-shroom_world = { path = "crates/shroom_world" }
-shroom_growth = { path = "crates/shroom_growth" }
-shroom_regions = { path = "crates/shroom_regions" }
-shroom_render = { path = "crates/shroom_render" }
-shroom_input = { path = "crates/shroom_input" }
-shroom_ai = { path = "crates/shroom_ai" }
-shroom_fruiting = { path = "crates/shroom_fruiting" }
-shroom_ui = { path = "crates/shroom_ui" }
+fungai_core = { path = "crates/core" }
+fungai_world = { path = "crates/world" }
+fungai_growth = { path = "crates/growth" }
+fungai_regions = { path = "crates/regions" }
+fungai_render = { path = "crates/render" }
+fungai_input = { path = "crates/input" }
+fungai_ai = { path = "crates/ai" }
+fungai_fruiting = { path = "crates/fruiting" }
+fungai_ui = { path = "crates/ui" }
 
 [profile.dev]
 opt-level = 1
