@@ -1,0 +1,20 @@
+[package]
+name = "fungai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+dev = ["bevy/dynamic_linking", "bevy/hotpatching", "bevy/dev"]
+
+[dependencies]
+bevy = { workspace = true }
+fungai_core = { workspace = true }
+fungai_world = { workspace = true }
+fungai_growth = { workspace = true }
+fungai_regions = { workspace = true }
+fungai_render = { workspace = true }
+fungai_input = { workspace = true }
+fungai_ai = { workspace = true }
+fungai_fruiting = { workspace = true }
+fungai_ui = { workspace = true }

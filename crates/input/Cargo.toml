@@ -1,0 +1,9 @@
+[package]
+name = "fungai_input"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+fungai_core = { workspace = true }
