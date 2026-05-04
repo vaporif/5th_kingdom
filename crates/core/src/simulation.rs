@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-
 use bevy::prelude::*;
-
-use crate::grid::Hex;
 
 #[derive(Resource)]
 pub struct TickTimer {
@@ -110,11 +106,6 @@ impl GameState {
             && self.mushrooms_fruited >= self.mushrooms_required
             && self.fragments_total > 0
     }
-}
-
-#[derive(Resource, Default, Debug)]
-pub struct TerrainSpriteMap {
-    pub sprites: HashMap<Hex, Entity>,
 }
 
 pub fn tick_advancement_system(

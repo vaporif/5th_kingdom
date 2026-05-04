@@ -261,29 +261,29 @@ Run: `git add -A && git commit -m "move HintsVisible from core to ui"`
 - Edit: `crates/core/src/lib.rs` (remove `init_resource::<TerrainSpriteMap>()` at `:35`)
 - Edit: `crates/render/src/lib.rs` (register the resource)
 
-- [ ] **Step 1: Map consumers**
+- [x] **Step 1: Map consumers**
 
 Run: `grep -rn "TerrainSpriteMap" /Users/vaporif/Repos/fungai/crates/ --include="*.rs"`
 Expected: `core/simulation.rs`, `core/lib.rs`, `render/terrain_render.rs`.
 
-- [ ] **Step 2: Move struct + `Default` impl**
+- [x] **Step 2: Move struct + `Default` impl**
 
 Read `crates/core/src/simulation.rs:115-118` (`TerrainSpriteMap` derives `Default`, so there is no separate impl block). Also cut the `use std::collections::HashMap;` at `simulation.rs:1` if no other type in that file still needs it (check first). Paste the struct into `crates/render/src/terrain_render.rs` near the top, below the existing imports. Add a local `use std::collections::HashMap;` at the top of `terrain_render.rs` if not already present. The file's `use fungai_core::*;` glob at `:9` previously surfaced the type; after the move, the type is in scope locally so no further `use` line is required.
 
-- [ ] **Step 3: Register in `RenderPlugin`**
+- [x] **Step 3: Register in `RenderPlugin`**
 
 `crates/render/src/lib.rs`: add `.init_resource::<terrain_render::TerrainSpriteMap>()` near the other `init_resource` calls (around `:23-30`). Decide whether to expose: add `pub use terrain_render::TerrainSpriteMap;` only if a downstream crate needs it (Step 1's grep tells you).
 
-- [ ] **Step 4: Remove from core's plugin**
+- [x] **Step 4: Remove from core's plugin**
 
 Delete `.init_resource::<TerrainSpriteMap>()` from `crates/core/src/lib.rs:35`.
 
-- [ ] **Step 5: Verify build and tests**
+- [x] **Step 5: Verify build and tests**
 
 Run: `cargo check --workspace && cargo nextest run --workspace && cargo clippy --workspace --all-targets -- -D warnings`
 Expected: all clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run: `git add -A && git commit -m "move TerrainSpriteMap from core to render"`
 

@@ -21,6 +21,7 @@ impl Plugin for RenderPlugin {
             .add_plugins(Material2dPlugin::<atmosphere::VignetteMaterial>::default())
             .add_plugins(Material2dPlugin::<network_render::NetworkMaterial>::default())
             .init_resource::<assets::EntitySprites>()
+            .init_resource::<terrain_render::TerrainSpriteMap>()
             .init_resource::<BranchGraph>()
             .init_resource::<TipPositions>()
             .init_resource::<RegionHulls>()

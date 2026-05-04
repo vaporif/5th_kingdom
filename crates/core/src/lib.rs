@@ -29,7 +29,6 @@ impl Plugin for CorePlugin {
             .init_resource::<TickTimer>()
             .init_resource::<SimulationSpeed>()
             .init_resource::<GamePhase>()
-            .init_resource::<TerrainSpriteMap>()
             .init_resource::<SelectedRegion>()
             .add_message::<TurnAdvanced>()
             .add_message::<TileDiscovered>()
