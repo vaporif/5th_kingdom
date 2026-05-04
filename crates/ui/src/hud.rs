@@ -52,7 +52,6 @@ pub fn spawn_hud(mut commands: Commands) {
             ));
         });
 
-    // Speed display (bottom-right)
     commands.spawn((
         SpeedDisplayText,
         Text::new(SimulationSpeed::default().label()),
@@ -69,7 +68,6 @@ pub fn spawn_hud(mut commands: Commands) {
         },
     ));
 
-    // Hints panel (top-right)
     commands
         .spawn((
             HintsPanel,

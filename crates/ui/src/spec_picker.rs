@@ -130,7 +130,6 @@ pub fn spec_picker_system(
         });
 }
 
-/// Handle clicks — set target specialization and highlight the active button.
 pub fn spec_picker_click_system(
     interactions: Query<(&Interaction, &SpecPickerButton), Changed<Interaction>>,
     selected: Res<SelectedRegion>,
