@@ -1,15 +1,10 @@
 use bevy::prelude::*;
 use fungai_core::*;
 
-pub fn decay_system(
-    _commands: Commands,
-    mut tiles: Query<(Entity, &GridPos, &mut Tile)>,
-    region_states: Res<RegionStates>,
-) {
-    for (_entity, _gpos, mut tile) in tiles.iter_mut() {
+pub fn decay_system(mut tiles: Query<&mut Tile>, region_states: Res<RegionStates>) {
+    for mut tile in tiles.iter_mut() {
         if let Occupant::Player(rid) = tile.occupant {
             let starved = region_states.get(rid).is_none_or(|r| r.nutrients <= 0.0);
-
             if starved {
                 tile.biomass -= 0.1;
                 if tile.biomass <= 0.0 {
