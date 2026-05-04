@@ -496,7 +496,7 @@ Expected: game starts, terrain renders, mycelium network renders when growing, p
 
 If priority arrows OR selection highlight appear laggy, Step 3's split was wrong — verify the two input-driven extracts are in the ungated block.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run: `git add -A && git commit -m "gate simulation-driven render extracts on SimulationSet"`
 
