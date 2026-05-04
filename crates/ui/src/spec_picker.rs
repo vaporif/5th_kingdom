@@ -60,6 +60,10 @@ pub fn spec_picker_system(
     region_states: Res<RegionStates>,
     existing: Query<Entity, With<SpecPickerPanel>>,
 ) {
+    if !selected.is_changed() && !region_states.is_changed() {
+        return;
+    }
+
     let should_show = selected.region_id.and_then(|rid| region_states.get(rid));
 
     let Some(_state) = should_show else {
@@ -153,6 +157,10 @@ pub fn spec_picker_highlight_system(
     region_states: Res<RegionStates>,
     mut buttons: Query<(&SpecPickerButton, &mut BackgroundColor)>,
 ) {
+    if !selected.is_changed() && !region_states.is_changed() {
+        return;
+    }
+
     let target = selected
         .region_id
         .and_then(|rid| region_states.get(rid))
