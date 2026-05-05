@@ -949,7 +949,7 @@ Verify:
 
 Document the manual verification in the PR description with a screenshot if possible.
 
-- [ ] **Step 17: Commit**
+- [x] **Step 17: Commit**
 
 Run:
 ```
