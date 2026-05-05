@@ -44,9 +44,7 @@ fn point_in_pointy_hex(px: f32, py: f32, cx: f32, cy: f32, half_w: f32, half_h: 
     if dx > half_w || dy > half_h {
         return false;
     }
-    // Pointy-top hex: clip the four diagonal corners.
-    let slope = half_h / half_w * 2.0;
-    dx * slope + dy <= half_h * 2.0
+    dx * (half_h / half_w) + 2.0 * dy <= 2.0 * half_h
 }
 
 fn main() {
@@ -58,11 +56,10 @@ fn main() {
     for (row, terrain) in TERRAINS.iter().copied().enumerate() {
         let base = terrain_base_color(terrain);
         let row_offset = row as u32 * TILE_H;
-        let cy_local = (TILE_H as f32 - 1.0) * 0.5;
 
         for y in 0..TILE_H {
             for x in 0..TILE_W {
-                if !point_in_pointy_hex(x as f32, y as f32, cx, cy_local, half_w, half_h) {
+                if !point_in_pointy_hex(x as f32, y as f32, cx, half_h, half_w, half_h) {
                     img.put_pixel(x, row_offset + y, Rgba([0, 0, 0, 0]));
                     continue;
                 }
