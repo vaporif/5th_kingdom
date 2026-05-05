@@ -71,10 +71,12 @@ pub fn terrain_generation(
         &mut grid,
         &tile_data,
         &mut placements,
-        player_rid,
-        rival_id,
-        &player_hexes,
-        &rival_hexes,
+        RegionAssignment {
+            player_rid,
+            rival_id,
+            player_hexes: &player_hexes,
+            rival_hexes: &rival_hexes,
+        },
     );
     spawn_agents(&mut commands, placements);
     spawn_initial_tips(&mut commands, &grid, player_start, player_rid);
@@ -222,34 +224,37 @@ fn init_player_region(region_states: &mut RegionStates) -> RegionId {
     rid
 }
 
-#[allow(clippy::too_many_arguments)]
+struct RegionAssignment<'a> {
+    player_rid: RegionId,
+    rival_id: RivalId,
+    player_hexes: &'a HashSet<Hex>,
+    rival_hexes: &'a HashSet<Hex>,
+}
+
 fn spawn_world_tiles(
     commands: &mut Commands,
     grid: &mut GridWorld,
     tile_data: &HashMap<Hex, TileBase>,
     placements: &mut Placements,
-    player_rid: RegionId,
-    rival_id: RivalId,
-    player_hexes: &HashSet<Hex>,
-    rival_hexes: &HashSet<Hex>,
+    assignment: RegionAssignment<'_>,
 ) {
     for y in 0..MAP_HEIGHT {
         for x in 0..MAP_WIDTH {
             let hex = offset_to_hex(x, y);
             let base = tile_data[&hex];
-            let tile = if player_hexes.contains(&hex) {
+            let tile = if assignment.player_hexes.contains(&hex) {
                 Tile {
                     terrain: TerrainType::Soil,
-                    occupant: Occupant::Player(player_rid),
+                    occupant: Occupant::Player(assignment.player_rid),
                     nutrient_level: 0.8,
                     discovered: true,
                     biomass: 1.0,
                     ..default()
                 }
-            } else if rival_hexes.contains(&hex) {
+            } else if assignment.rival_hexes.contains(&hex) {
                 Tile {
                     terrain: TerrainType::Soil,
-                    occupant: Occupant::Rival(rival_id),
+                    occupant: Occupant::Rival(assignment.rival_id),
                     biomass: 1.5,
                     ..default()
                 }

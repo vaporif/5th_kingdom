@@ -127,17 +127,28 @@ pub struct HudTexts<'w, 's> {
     hints: Query<'w, 's, &'static mut Visibility, With<HintsPanel>>,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn update_hud(
-    game_state: Res<GameState>,
-    region_states: Res<RegionStates>,
-    selected: Res<SelectedRegion>,
-    speed: Res<SimulationSpeed>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    config: Res<LaunchConfig>,
-    mut hints_visible: ResMut<HintsVisible>,
-    mut texts: HudTexts,
-) {
+#[derive(SystemParam)]
+pub struct HudInputs<'w> {
+    game_state: Res<'w, GameState>,
+    region_states: Res<'w, RegionStates>,
+    selected: Res<'w, SelectedRegion>,
+    speed: Res<'w, SimulationSpeed>,
+    keyboard: Res<'w, ButtonInput<KeyCode>>,
+    config: Res<'w, LaunchConfig>,
+    hints_visible: ResMut<'w, HintsVisible>,
+}
+
+pub fn update_hud(inputs: HudInputs, mut texts: HudTexts) {
+    let HudInputs {
+        game_state,
+        region_states,
+        selected,
+        speed,
+        keyboard,
+        config,
+        mut hints_visible,
+    } = inputs;
+
     if let Ok(mut text) = texts.turn.single_mut() {
         **text = format!(
             "Turn: {} | Fragments: {}/{} | Mushrooms: {}/{} | Seed: {}",
