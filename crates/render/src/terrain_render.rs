@@ -11,21 +11,19 @@ const MAP_HEIGHT: u32 = 60;
 
 const ATLAS_PATH: &str = "sprites/terrain/terrain_atlas.png";
 
-// Visual cell size in the atlas PNG (rounded up to whole pixels for the
-// generator). This is what `bevy_ecs_tilemap` samples per tile.
+// Cell size in the atlas PNG. `bevy_ecs_tilemap` samples one of these per tile.
 const TILE_PX_W: f32 = 49.0; // matches the generator's TILE_W
 const TILE_PX_H: f32 = 56.0;
 
-// Spacing between tile centers in world space. Must equal hexx's column /
-// row strides for `scale = 28` pointy-top so other rendering layers (network
-// splines, organism sprites, region highlights) align with the terrain
-// without per-column drift. Drift would otherwise compound to ~40px across
-// the 80-column grid (TILE_PX_W - 28*sqrt(3) ≈ 0.5px per column).
+// Spacing between tile centers in world space. Must match hexx's column / row
+// strides for scale=28 pointy-top so other layers (splines, sprites, highlights)
+// don't drift relative to the terrain — the gap is ~0.5px per column, which
+// would compound to ~40px across the 80-column grid.
 const GRID_PX_W: f32 = 28.0 * 1.732_050_8;
 const GRID_PX_H: f32 = 56.0;
 
-/// One row per `TerrainType` variant. Asserted at runtime against the loaded
-/// atlas in `assert_atlas_addresses_all_terrains`.
+/// One row per `TerrainType` variant. Checked against the atlas at runtime
+/// in `assert_atlas_addresses_all_terrains`.
 const REQUIRED_TERRAIN_INDICES: u32 = 7;
 
 const TERRAIN_Z: f32 = -10.0;
@@ -57,10 +55,10 @@ pub fn terrain_type_index(terrain: TerrainType) -> u32 {
     }
 }
 
-/// Converts a `hexx` axial coordinate into a `bevy_ecs_tilemap` `TilePos`,
-/// preserving `OffsetHexMode::Odd` parity by routing through `to_offset_coordinates`.
-/// Returns `None` if the offset coordinates are negative — `TilePos` is `u32`-indexed
-/// and a wrapping cast would point at a phantom cell far outside the grid.
+/// Convert a `hexx` axial coordinate to a `bevy_ecs_tilemap` `TilePos`,
+/// keeping `OffsetHexMode::Odd` parity via `to_offset_coordinates`.
+/// Returns `None` for negative offsets: `TilePos` is `u32`-indexed and a
+/// wrapping cast would point at a phantom cell far outside the grid.
 pub fn hex_to_tile_pos(hex: Hex) -> Option<TilePos> {
     let [col, row] = hex.to_offset_coordinates(OffsetHexMode::Odd, HexOrientation::Pointy);
     if col < 0 || row < 0 {
@@ -82,8 +80,8 @@ fn tile_color_for(discovery: &DiscoveryMap, hex: Hex) -> Color {
 }
 
 /// Holds the atlas handle so `assert_atlas_addresses_all_terrains` can re-read
-/// the image once Bevy's async loader has populated `Assets<Image>`. Cleared
-/// after the assertion fires.
+/// the image once Bevy's async loader populates `Assets<Image>`. Cleared once
+/// the check passes.
 #[derive(Resource, Default)]
 pub struct PendingAtlasCheck(pub Option<Handle<Image>>);
 
@@ -116,10 +114,9 @@ pub fn spawn_terrain_tilemap(
     let tilemap_entity = commands.spawn_empty().id();
     let mut storage = TileStorage::empty(map_size);
 
-    // Decorate each existing simulation entity with a TileBundle. Hexes whose
-    // offset coordinates fall outside the rectangular tilemap bounds (e.g.
-    // negative offsets near the origin in some test grids) are skipped:
-    // TileStorage::set indexes a flat Vec and would multiply-overflow on
+    // Decorate each existing simulation entity with a TileBundle. Skip hexes
+    // whose offset coordinates fall outside the rectangular tilemap bounds —
+    // `TileStorage::set` indexes a flat Vec and would multiply-overflow on
     // wrapped u32 values.
     for (&hex, &entity) in &grid.tiles {
         let Ok(tile) = tiles.get(entity) else {
@@ -141,9 +138,9 @@ pub fn spawn_terrain_tilemap(
         storage.set(&tp, entity);
     }
 
-    // Compute the offset that aligns tilemap world space with hexx world space.
-    // tile_pos.center_in_world is in tilemap-local space; layout.hex_to_world_pos
-    // is the engine-wide truth. We translate the tilemap so they agree at H=0.
+    // Align tilemap world space with hexx world space. `center_in_world` is
+    // tilemap-local; `hex_to_world_pos` is the engine-wide truth. Translate
+    // the tilemap so the two agree at Hex::ZERO.
     let zero_tp = hex_to_tile_pos(Hex::ZERO).expect("Hex::ZERO is in-bounds");
     let local = zero_tp.center_in_world(
         &map_size,
@@ -168,10 +165,9 @@ pub fn spawn_terrain_tilemap(
     });
 }
 
-// `ParamSet` is the canonical way to overlap two `&mut TileColor` queries —
-// see plan note. The combined type is unavoidably wide, so silence the lint
-// at the call site rather than in `Cargo.toml` where it would also affect
-// other systems we haven't yet written.
+// `ParamSet` is the only way to overlap two `&mut TileColor` queries; the
+// combined type is wide enough to trip `type_complexity`. Suppress here so
+// the workspace lint stays strict for systems that don't need the escape.
 #[allow(clippy::type_complexity)]
 pub fn terrain_tile_update_system(
     mut sets: ParamSet<(
@@ -182,9 +178,8 @@ pub fn terrain_tile_update_system(
     untiled: Query<Entity, (With<Tile>, Without<TilePos>)>,
     mut warned_untiled: Local<bool>,
 ) {
-    // Spec §"Tilemap ↔ simulation desync": warn exactly once if a tile entity
-    // lacks a TilePos. Don't spam: a stale spawn loop could otherwise emit
-    // thousands of warnings per frame.
+    // Warn exactly once if a tile entity lacks a TilePos — a stale spawn loop
+    // would otherwise emit thousands of warnings per frame.
     if !*warned_untiled && let Some(entity) = untiled.iter().next() {
         warn!(
             "terrain_tile_update_system: entity {entity:?} has Tile but no TilePos -- \
@@ -207,10 +202,9 @@ pub fn terrain_tile_update_system(
     }
 }
 
-/// Spec §"Asset loading": once the atlas image lands in `Assets<Image>`,
-/// verify it can address all `REQUIRED_TERRAIN_INDICES` indices and panic
-/// loudly if it cannot. Asset loads are async, so this runs every Update
-/// until the handle resolves; clears the pending handle on success.
+/// Verify the atlas can address all `REQUIRED_TERRAIN_INDICES` once it
+/// lands in `Assets<Image>`, and panic if not. Asset loads are async, so
+/// this re-runs every Update until the handle resolves, then clears it.
 pub fn assert_atlas_addresses_all_terrains(
     mut pending: ResMut<PendingAtlasCheck>,
     images: Res<Assets<Image>>,
