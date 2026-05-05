@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use fungai_core::{
     BacteriaColonyAgent, FragmentAgent, FragmentId, GameState, GridPos, GridWorld, HyphalTip,
-    NeutralFungusAgent, Occupant, PlantRootAgent, RegionId, RegionStates, RivalId,
+    LaunchConfig, NeutralFungusAgent, Occupant, PlantRootAgent, RegionId, RegionStates, RivalId,
     SpecializationType, TerrainType, Tile, TileContents,
 };
 use hexx::{Hex, HexOrientation, OffsetHexMode};
@@ -28,15 +28,6 @@ fn offset_to_hex(col: i32, row: i32) -> Hex {
     Hex::from_offset_coordinates([col, row], OffsetHexMode::Odd, HexOrientation::Pointy)
 }
 
-#[derive(Resource)]
-pub struct TerrainSeed(pub u64);
-
-impl Default for TerrainSeed {
-    fn default() -> Self {
-        Self(42)
-    }
-}
-
 #[derive(Clone, Copy)]
 struct TileBase {
     terrain: TerrainType,
@@ -58,9 +49,9 @@ pub fn terrain_generation(
     mut grid: ResMut<GridWorld>,
     mut game_state: ResMut<GameState>,
     mut region_states: ResMut<RegionStates>,
-    seed: Res<TerrainSeed>,
+    config: Res<LaunchConfig>,
 ) {
-    let mut rng = StdRng::seed_from_u64(seed.0);
+    let mut rng = StdRng::seed_from_u64(config.seed);
     grid.width = MAP_WIDTH;
     grid.height = MAP_HEIGHT;
 
@@ -352,7 +343,7 @@ mod tests {
         app.init_resource::<GridWorld>();
         app.init_resource::<GameState>();
         app.init_resource::<RegionStates>();
-        app.insert_resource(TerrainSeed(12345));
+        app.insert_resource(LaunchConfig { seed: 12345 });
         app
     }
 
