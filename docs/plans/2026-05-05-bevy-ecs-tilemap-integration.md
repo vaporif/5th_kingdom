@@ -288,7 +288,7 @@ git commit -m "render: add placeholder terrain atlas + generator binary"
 
 ### Stage A — wire the dependency
 
-- [ ] **Step 1: Add bevy_ecs_tilemap to workspace deps**
+- [x] **Step 1: Add bevy_ecs_tilemap to workspace deps**
 
 In `Cargo.toml`, add to `[workspace.dependencies]` after the new `image` line from Task 1:
 
@@ -298,7 +298,7 @@ bevy_ecs_tilemap = "0.18.1"
 
 Pinning `0.18.1` explicitly: `0.18.0` was a same-day release superseded by `0.18.1`; we avoid the brief window of yanked behaviour.
 
-- [ ] **Step 2: Add bevy_ecs_tilemap and fungai_world to the render crate**
+- [x] **Step 2: Add bevy_ecs_tilemap and fungai_world to the render crate**
 
 In `crates/render/Cargo.toml`, add `bevy_ecs_tilemap` and `fungai_world` to `[dependencies]`. `fungai_world` is needed so `RenderPlugin` can sequence `spawn_terrain_tilemap.after(fungai_world::terrain_generation)`. The block becomes:
 
@@ -313,14 +313,14 @@ fungai_world = { workspace = true }
 
 Note: `fungai_world` already depends on `fungai_core`; pulling it into `fungai_render` does not introduce a cycle (no other render code is referenced from world).
 
-- [ ] **Step 3: Build the workspace to verify the dep resolves**
+- [x] **Step 3: Build the workspace to verify the dep resolves**
 
 Run: `cargo build -p fungai_render`
 Expected: success.
 
 ### Stage B — write the failing test (TDD)
 
-- [ ] **Step 4: Add the round-trip alignment test first**
+- [x] **Step 4: Add the round-trip alignment test first**
 
 Append the following test module to `crates/render/src/terrain_render.rs` (alongside whatever tests are still there). It will not compile yet — `hex_to_tile_pos`, `spawn_terrain_tilemap`, and `terrain_tile_update_system` are intentionally undefined. That is the failing-test signal:
 
@@ -551,14 +551,14 @@ mod tilemap_tests {
 }
 ```
 
-- [ ] **Step 5: Confirm the test module fails to compile**
+- [x] **Step 5: Confirm the test module fails to compile**
 
 Run: `cargo build -p fungai_render --tests`
 Expected: compile error citing missing `hex_to_tile_pos`, `spawn_terrain_tilemap`, `terrain_tile_update_system`. This is the "test fails first" gate. Do not proceed until you see these errors.
 
 ### Stage C — implement the new renderer
 
-- [ ] **Step 6: Rewrite `crates/render/src/terrain_render.rs`**
+- [x] **Step 6: Rewrite `crates/render/src/terrain_render.rs`**
 
 Replace the entire file contents (keep the test module from Step 4 at the bottom verbatim, and delete `terrain_render_spawns_mesh2d_entities`, `terrain_material_stores_uniforms`, and the old top-of-file `mod tests` block):
 
@@ -787,7 +787,7 @@ Notes for the implementer:
 - Path 1 fires on `Changed<Tile>` only; Path 2 drives all-tile colour updates whenever `DiscoveryMap` mutates. The `discovery_drives_tile_color` and `discovery_applies_to_correct_neighbors` tests rely on Path 2, since they mutate `DiscoveryMap` without changing any `Tile`.
 - Keep no `unwrap` paths in production code: the asset load is async and `Tile` query lookup uses `let Ok ... else { continue }`.
 
-- [ ] **Step 7: Update `crates/render/src/lib.rs`**
+- [x] **Step 7: Update `crates/render/src/lib.rs`**
 
 Replace the existing `RenderPlugin::build` body with the version below. The diff:
 - Drop `Material2dPlugin::<TerrainMaterial>::default()` and `init_resource::<TerrainSpriteMap>()`.
@@ -883,12 +883,12 @@ impl Plugin for RenderPlugin {
 
 The `.after(terrain_generation)` constraint is load-bearing: `WorldPlugin::build` (`crates/world/src/lib.rs:14`) registers `terrain_generation` in the same `Startup` schedule and the systems would otherwise race. The plugin registration order in `bin/src/plugins.rs` (which adds `WorldPlugin` before `RenderPlugin`) is **not** sufficient — Bevy schedules unordered `Startup` systems in arbitrary order across plugins.
 
-- [ ] **Step 8: Build with the failing tests still in place**
+- [x] **Step 8: Build with the failing tests still in place**
 
 Run: `cargo build -p fungai_render --tests`
 Expected: success. The tests added in Step 4 should now compile.
 
-- [ ] **Step 9: Run the new tilemap tests**
+- [x] **Step 9: Run the new tilemap tests**
 
 Run: `cargo nextest run -p fungai_render tilemap`
 Expected: all six tests in `tilemap_tests` pass:
@@ -901,16 +901,16 @@ Expected: all six tests in `tilemap_tests` pass:
 
 If `tilemap_world_pos_aligns_with_hex_layout` fails, do NOT loosen the `< 1.0` tolerance. The test is the source of truth on parity and spacing — adjust `TILE_PX_W` / `TILE_PX_H` (and the corresponding generator constants in `bin/src/bin/gen_placeholder_atlas.rs`, then re-run the generator) until the math agrees with `hexx`'s pointy-top geometry (`width = scale * sqrt(3)`, `height = scale * 2`, row stride `= scale * 1.5`).
 
-- [ ] **Step 10: Run the full render-crate test suite**
+- [x] **Step 10: Run the full render-crate test suite**
 
 Run: `cargo nextest run -p fungai_render`
 Expected: all tests green. The pre-existing data-layer tests still pass; the deleted tests (`terrain_render_spawns_mesh2d_entities`, `terrain_material_stores_uniforms`) no longer appear.
 
-- [ ] **Step 11: Delete the now-dead shader**
+- [x] **Step 11: Delete the now-dead shader**
 
 Run: `git rm bin/assets/shaders/terrain.wgsl`
 
-- [ ] **Step 12: Confirm no leftover references**
+- [x] **Step 12: Confirm no leftover references**
 
 Run:
 ```
@@ -918,24 +918,24 @@ rg 'TerrainMaterial|TerrainUniforms|TerrainSpriteMap|terrain_render_system|terra
 ```
 Expected: zero matches anywhere in the repo (including comments and documentation).
 
-- [ ] **Step 13: Workspace build**
+- [x] **Step 13: Workspace build**
 
 Run: `cargo build`
 Expected: success.
 
-- [ ] **Step 14: Workspace tests**
+- [x] **Step 14: Workspace tests**
 
 Run: `just test`
 Expected: green across the workspace.
 
-- [ ] **Step 15: Lint**
+- [x] **Step 15: Lint**
 
 Run: `just lint`
 Expected: clean.
 
 ### Stage D — manual smoke test
 
-- [ ] **Step 16: Run the game and verify the terrain renders**
+- [x] **Step 16: Run the game and verify the terrain renders**
 
 Run: `just dev`
 Verify:
