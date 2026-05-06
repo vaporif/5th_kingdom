@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use fungai_core::SimulationSystems;
+use kingdom_core::SimulationSystems;
 
 mod combat;
 mod environment;

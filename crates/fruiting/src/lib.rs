@@ -4,9 +4,9 @@ mod spores;
 
 use bevy::prelude::*;
 
-use fungai_core::SimulationSystems;
+use kingdom_core::SimulationSystems;
 
-pub use effects::mufungai_effect_system;
+pub use effects::mukingdom_effect_system;
 pub use fruiting::fruiting_system;
 pub use spores::{SporeAction, SporeRng, spore_system};
 
@@ -20,7 +20,7 @@ impl Plugin for FruitingPlugin {
                 Update,
                 (
                     fruiting::fruiting_system,
-                    effects::mufungai_effect_system,
+                    effects::mukingdom_effect_system,
                     spores::spore_system,
                 )
                     .chain()

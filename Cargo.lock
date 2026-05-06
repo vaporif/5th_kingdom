@@ -2965,110 +2965,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fungai"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "clap",
- "fungai_ai",
- "fungai_core",
- "fungai_fruiting",
- "fungai_growth",
- "fungai_input",
- "fungai_regions",
- "fungai_render",
- "fungai_ui",
- "fungai_world",
- "image",
-]
-
-[[package]]
-name = "fungai_ai"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "fungai_core"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "hexx",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "fungai_fruiting"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "fungai_growth"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "fungai_input"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "leafwing-input-manager",
-]
-
-[[package]]
-name = "fungai_regions"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "fungai_render"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_ecs_tilemap",
- "fungai_core",
- "fungai_world",
- "hexx",
-]
-
-[[package]]
-name = "fungai_ui"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "fungai_fruiting",
- "fungai_input",
- "fungai_regions",
-]
-
-[[package]]
-name = "fungai_world"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "fungai_core",
- "hexx",
- "rand 0.10.1",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3762,6 +3658,110 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
+
+[[package]]
+name = "kingdom"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "clap",
+ "image",
+ "kingdom_ai",
+ "kingdom_core",
+ "kingdom_fruiting",
+ "kingdom_growth",
+ "kingdom_input",
+ "kingdom_regions",
+ "kingdom_render",
+ "kingdom_ui",
+ "kingdom_world",
+]
+
+[[package]]
+name = "kingdom_ai"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "kingdom_core"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "hexx",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "kingdom_fruiting"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "kingdom_growth"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "kingdom_input"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "leafwing-input-manager",
+]
+
+[[package]]
+name = "kingdom_regions"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "kingdom_render"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_ecs_tilemap",
+ "hexx",
+ "kingdom_core",
+ "kingdom_world",
+]
+
+[[package]]
+name = "kingdom_ui"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "kingdom_core",
+ "kingdom_fruiting",
+ "kingdom_input",
+ "kingdom_regions",
+]
+
+[[package]]
+name = "kingdom_world"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "hexx",
+ "kingdom_core",
+ "rand 0.10.1",
+]
 
 [[package]]
 name = "konst"

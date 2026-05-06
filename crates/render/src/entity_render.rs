@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     FaunaAgent, FragmentAgent, FruitingBody, GridPos, Hex, HexLayout, MushroomEntity,
     NeutralFungusAgent, OrganismSpriteLink, PlantRootAgent, SpecializationType,
 };
@@ -334,7 +334,7 @@ pub fn region_highlight_render_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::create_hex_layout;
+    use kingdom_core::create_hex_layout;
 
     #[test]
     fn organism_sprite_size_is_proportional_to_hex() {

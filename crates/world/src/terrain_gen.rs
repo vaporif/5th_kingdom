@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use fungai_core::{
+use hexx::{Hex, HexOrientation, OffsetHexMode};
+use kingdom_core::{
     BacteriaColonyAgent, FragmentAgent, FragmentId, GameState, GridPos, GridWorld, HyphalTip,
     LaunchConfig, NeutralFungusAgent, Occupant, PlantRootAgent, RegionId, RegionStates, RivalId,
     SpecializationType, TerrainType, Tile, TileContents,
 };
-use hexx::{Hex, HexOrientation, OffsetHexMode};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
@@ -338,7 +338,7 @@ fn spawn_initial_tips(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::RegionStates;
+    use kingdom_core::RegionStates;
 
     fn test_app() -> App {
         let mut app = App::new();

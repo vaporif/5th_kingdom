@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     GridPos, GridWorld, Hex, HexLayout, HexOrientation, OffsetHexMode, TerrainType, Tile,
 };
 
@@ -254,12 +254,12 @@ mod tilemap_tests {
     use bevy::MinimalPlugins;
     use bevy::asset::AssetPlugin;
     use bevy::image::ImagePlugin;
-    use fungai_core::{
+    use kingdom_core::{
         GridPos, GridWorld, Hex, HexOrientation, OffsetHexMode, TerrainType, Tile,
         create_hex_layout,
     };
     // NOTE: `super::*` exposes only items actually defined in `terrain_render.rs`;
-    // names brought in via `use fungai_core::{...}` at the top of that file are
+    // names brought in via `use kingdom_core::{...}` at the top of that file are
     // private and do NOT leak through `super::*`. List every type used below
     // explicitly.
 

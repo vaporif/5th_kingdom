@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{FragmentAgent, FruitingBody, GameState, MushroomEntity, RegionStates};
+use kingdom_core::{FragmentAgent, FruitingBody, GameState, MushroomEntity, RegionStates};
 
 pub fn fruiting_system(
     mut commands: Commands,
@@ -48,7 +48,7 @@ pub fn fruiting_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::{FragmentId, GridWorld, Hex, RegionStates};
+    use kingdom_core::{FragmentId, GridWorld, Hex, RegionStates};
 
     fn test_app() -> App {
         let mut app = App::new();
@@ -131,13 +131,13 @@ mod tests {
         app.add_systems(Update, fruiting_system);
         app.update();
 
-        let mufungai_count = app
+        let mukingdom_count = app
             .world_mut()
             .query::<&MushroomEntity>()
             .iter(app.world())
             .count();
         assert_eq!(
-            mufungai_count, 1,
+            mukingdom_count, 1,
             "completed fruiting should spawn mushroom"
         );
     }

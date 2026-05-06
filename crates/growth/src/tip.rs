@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     ANASTOMOSIS_BIOMASS_BONUS, GridPos, GridWorld, Hex, HexLayout, HyphalTip, Occupant, RegionId,
     RegionStates, SpecializationType, Tile,
 };
@@ -131,7 +131,7 @@ pub fn hyphal_tip_system(
 
 #[cfg(test)]
 mod tests {
-    use fungai_core::{TerrainType, create_hex_layout};
+    use kingdom_core::{TerrainType, create_hex_layout};
 
     use super::*;
 

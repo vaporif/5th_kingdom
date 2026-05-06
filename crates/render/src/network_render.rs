@@ -10,8 +10,8 @@ use bevy::{
     shader::ShaderRef,
     sprite_render::{AlphaMode2d, Material2d},
 };
-use fungai_core::{HexLayout, RegionId, RivalId};
 use hexx::Hex;
+use kingdom_core::{HexLayout, RegionId, RivalId};
 
 use crate::data_layer::{BranchEdge, BranchGraph, RivalBranchGraph};
 
@@ -61,8 +61,8 @@ pub fn catmull_rom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
 
 /// Map a specialization to its core color as `LinearRgba`.
 #[must_use]
-fn region_color_linear(spec: Option<fungai_core::SpecializationType>) -> LinearRgba {
-    use fungai_core::SpecializationType;
+fn region_color_linear(spec: Option<kingdom_core::SpecializationType>) -> LinearRgba {
+    use kingdom_core::SpecializationType;
     match spec {
         Some(SpecializationType::Explorer) => LinearRgba::new(1.0, 0.9, 0.3, 1.0),
         Some(SpecializationType::Parasite) => LinearRgba::new(0.8, 0.2, 0.2, 1.0),
@@ -583,7 +583,7 @@ pub fn network_render_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::{SpecializationType, create_hex_layout};
+    use kingdom_core::{SpecializationType, create_hex_layout};
 
     #[test]
     fn catmull_rom_passes_through_control_points() {

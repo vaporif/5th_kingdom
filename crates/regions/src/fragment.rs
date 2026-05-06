@@ -1,6 +1,6 @@
 use bevy::ecs::message::MessageWriter;
 use bevy::prelude::*;
-use fungai_core::{FragmentAgent, FragmentFused, GameState, GridPos, GridWorld, Tile};
+use kingdom_core::{FragmentAgent, FragmentFused, GameState, GridPos, GridWorld, Tile};
 
 pub fn fragment_system(
     mut fragments: Query<(&GridPos, &mut FragmentAgent)>,
@@ -35,7 +35,7 @@ pub fn fragment_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::{FragmentId, Hex, Occupant, RegionId};
+    use kingdom_core::{FragmentId, Hex, Occupant, RegionId};
 
     #[test]
     fn fragment_fuses_when_player_occupies_tile() {

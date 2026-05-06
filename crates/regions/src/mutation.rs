@@ -1,6 +1,6 @@
 use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
-use fungai_core::UnlockOption;
+use kingdom_core::UnlockOption;
 
 use crate::slot_machine::SlotMachineTriggered;
 
@@ -31,7 +31,7 @@ pub fn mutation_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::UnlockPool;
+    use kingdom_core::UnlockPool;
 
     #[test]
     fn mutation_applied_from_slot_machine_event() {

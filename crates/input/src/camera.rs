@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{Hex, HexLayout, HexOrientation, OffsetHexMode};
+use kingdom_core::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 use leafwing_input_manager::prelude::*;
 
 use crate::action::Action;

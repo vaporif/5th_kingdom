@@ -1,12 +1,12 @@
 [package]
-name = "fungai_ui"
+name = "kingdom_ui"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-fungai_core = { workspace = true }
-fungai_fruiting = { workspace = true }
-fungai_input = { workspace = true }
-fungai_regions = { workspace = true }
+kingdom_core = { workspace = true }
+kingdom_fruiting = { workspace = true }
+kingdom_input = { workspace = true }
+kingdom_regions = { workspace = true }

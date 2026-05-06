@@ -1,9 +1,9 @@
 [package]
-name = "fungai"
+name = "kingdom"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
-default-run = "fungai"
+default-run = "TheFifthKingdom"
 
 [features]
 dev = ["bevy/dynamic_linking", "bevy/hotpatching", "bevy/dev"]
@@ -13,15 +13,19 @@ gen-atlas = ["dep:image"]
 bevy = { workspace = true }
 clap = { version = "4", features = ["derive"] }
 image = { workspace = true, optional = true }
-fungai_core = { workspace = true }
-fungai_world = { workspace = true }
-fungai_growth = { workspace = true }
-fungai_regions = { workspace = true }
-fungai_render = { workspace = true }
-fungai_input = { workspace = true }
-fungai_ai = { workspace = true }
-fungai_fruiting = { workspace = true }
-fungai_ui = { workspace = true }
+kingdom_core = { workspace = true }
+kingdom_world = { workspace = true }
+kingdom_growth = { workspace = true }
+kingdom_regions = { workspace = true }
+kingdom_render = { workspace = true }
+kingdom_input = { workspace = true }
+kingdom_ai = { workspace = true }
+kingdom_fruiting = { workspace = true }
+kingdom_ui = { workspace = true }
+
+[[bin]]
+name = "TheFifthKingdom"
+path = "src/main.rs"
 
 [[bin]]
 name = "gen_placeholder_atlas"

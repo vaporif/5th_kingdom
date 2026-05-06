@@ -1,10 +1,10 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     AbilityEffectType, ActiveEffect, MushroomEntity, RegionStates, SpecializationType,
 };
-use fungai_fruiting::SporeAction;
-use fungai_input::SelectedRegion;
+use kingdom_fruiting::SporeAction;
+use kingdom_input::SelectedRegion;
 
 #[derive(Resource, Default, Debug, Clone, Reflect)]
 pub struct ActiveAbilityEffects {

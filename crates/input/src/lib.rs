@@ -10,7 +10,7 @@ mod speed;
 
 pub use action::{Action, default_input_map};
 pub use camera::{GameCamera, camera_system, spawn_camera};
-pub use fungai_core::SelectedRegion;
+pub use kingdom_core::SelectedRegion;
 pub use priority::priority_system;
 pub use selection::selection_system;
 pub use specialization_input::specialization_input_system;

@@ -1,7 +1,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use fungai_core::{GameState, LaunchConfig, RegionStates, SimulationSpeed};
-use fungai_input::SelectedRegion;
+use kingdom_core::{GameState, LaunchConfig, RegionStates, SimulationSpeed};
+use kingdom_input::SelectedRegion;
 
 #[derive(Resource, Debug, Reflect)]
 pub struct HintsVisible(pub bool);

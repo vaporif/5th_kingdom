@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::*;
+use kingdom_core::*;
 
 use std::collections::HashMap;
 

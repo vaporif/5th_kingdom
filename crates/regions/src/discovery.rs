@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::ecs::message::MessageWriter;
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     DecompositionComplete, GridPos, GridWorld, Hex, HyphalTip, Occupant, RegionStates,
     SpecializationType, StudyComplete, Tile, TileContents, TileDiscovered, UnlockPool,
 };

@@ -1,10 +1,10 @@
 [package]
-name = "fungai_ai"
+name = "kingdom_ai"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-fungai_core = { workspace = true }
+kingdom_core = { workspace = true }
 rand = { workspace = true }

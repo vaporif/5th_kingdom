@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     GridPos, GridWorld, Hex, HyphalTip, MushroomEntity, Occupant, RegionId, RegionStates,
     SPORE_RELAY_ACCURACY_RADIUS, Tile,
 };
@@ -113,7 +113,7 @@ fn pick_spore_landing(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::{FragmentId, TerrainType};
+    use kingdom_core::{FragmentId, TerrainType};
 
     fn test_app() -> App {
         let mut app = App::new();
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn spore_skips_mufungai_without_owning_region() {
+    fn spore_skips_mukingdom_without_owning_region() {
         let mut app = test_app();
 
         let center = Hex::new(5, 5);

@@ -1,7 +1,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use fungai_core::*;
+use kingdom_core::*;
 use leafwing_input_manager::prelude::*;
 
 use crate::action::Action;

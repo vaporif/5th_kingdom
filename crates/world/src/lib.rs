@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::SimulationSystems;
+use kingdom_core::SimulationSystems;
 
 mod region_tracking;
 mod terrain_gen;

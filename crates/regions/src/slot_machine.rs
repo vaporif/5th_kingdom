@@ -1,6 +1,6 @@
 use bevy::ecs::message::{Message, MessageReader, MessageWriter};
 use bevy::prelude::*;
-use fungai_core::{StudyComplete, UnlockOption, UnlockPool};
+use kingdom_core::{StudyComplete, UnlockOption, UnlockPool};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rand::seq::IndexedRandom;
@@ -131,7 +131,7 @@ fn unlock_pool_options(pool: UnlockPool) -> Vec<UnlockOption> {
 
 #[cfg(test)]
 mod tests {
-    use fungai_core::Hex;
+    use kingdom_core::Hex;
 
     use super::*;
 

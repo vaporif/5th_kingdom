@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use fungai_core::*;
+use kingdom_core::*;
 
 pub fn nutrient_gradient_system(
     mut tiles: Query<(&GridPos, &mut Tile)>,

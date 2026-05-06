@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use fungai_core::{SimulationSpeed, TickTimer};
+use kingdom_core::{SimulationSpeed, TickTimer};
 use leafwing_input_manager::prelude::*;
 
 use crate::action::Action;

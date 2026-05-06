@@ -1,5 +1,5 @@
 {
-  description = "fungai - a Bevy game";
+  description = "The 5th Kingdom - a Bevy game";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

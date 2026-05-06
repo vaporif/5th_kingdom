@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use fungai_core::{RegionStates, SpecializationType};
-use fungai_input::SelectedRegion;
+use kingdom_core::{RegionStates, SpecializationType};
+use kingdom_input::SelectedRegion;
 
 #[derive(Component)]
 pub struct SpecPickerPanel;

@@ -1,6 +1,6 @@
 use bevy::ecs::message::{Message, MessageWriter};
 use bevy::prelude::*;
-use fungai_core::*;
+use kingdom_core::*;
 
 #[derive(Message)]
 pub struct NeutralFungiMerged {

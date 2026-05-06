@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use bevy::sprite_render::Material2dPlugin;
 use bevy_ecs_tilemap::prelude::TilemapPlugin;
-use fungai_core::SimulationSystems;
-use fungai_world::terrain_generation;
+use kingdom_core::SimulationSystems;
+use kingdom_world::terrain_generation;
 
 mod assets;
 mod atmosphere;

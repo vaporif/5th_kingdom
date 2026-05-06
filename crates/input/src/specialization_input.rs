@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{RegionStates, SpecializationType};
+use kingdom_core::{RegionStates, SpecializationType};
 use leafwing_input_manager::prelude::*;
 
 use crate::SelectedRegion;

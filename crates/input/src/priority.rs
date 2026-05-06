@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{GridPos, HexLayout, SelectedRegion, Tile};
+use kingdom_core::{GridPos, HexLayout, SelectedRegion, Tile};
 use leafwing_input_manager::prelude::*;
 
 use crate::action::Action;
@@ -49,7 +49,7 @@ pub fn priority_system(
 mod tests {
     use super::*;
     use bevy::input::InputPlugin as BevyInputPlugin;
-    use fungai_core::{GridPos, GridWorld, Hex, Tile, create_hex_layout};
+    use kingdom_core::{GridPos, GridWorld, Hex, Tile, create_hex_layout};
 
     use crate::action::{Action, default_input_map};
 

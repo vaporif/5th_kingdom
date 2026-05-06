@@ -11,13 +11,13 @@ mod tests {
 
     #[test]
     fn cli_parses_seed_flag() {
-        let args = Args::try_parse_from(["fungai", "--seed", "999"]).unwrap();
+        let args = Args::try_parse_from(["kingdom", "--seed", "999"]).unwrap();
         assert_eq!(args.seed, Some(999));
     }
 
     #[test]
     fn cli_no_seed_flag_yields_none() {
-        let args = Args::try_parse_from(["fungai"]).unwrap();
+        let args = Args::try_parse_from(["kingdom"]).unwrap();
         assert_eq!(args.seed, None);
     }
 }

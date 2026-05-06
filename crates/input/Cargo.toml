@@ -1,10 +1,10 @@
 [package]
-name = "fungai_input"
+name = "kingdom_input"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-fungai_core = { workspace = true }
+kingdom_core = { workspace = true }
 leafwing-input-manager = { workspace = true }

@@ -1,5 +1,5 @@
 //! Placeholder atlas generator. Run with:
-//!   cargo run -p fungai --bin gen_placeholder_atlas --features gen-atlas
+//!   cargo run -p kingdom --bin gen_placeholder_atlas --features gen-atlas
 //!
 //! Writes 1 column x 7 rows of 49x56 pointy-top hex sprites to
 //! bin/assets/sprites/terrain/terrain_atlas.png. Each cell is filled with
@@ -10,9 +10,9 @@
 
 use std::path::PathBuf;
 
-use fungai_core::TerrainType;
-use fungai_render::terrain_base_color;
 use image::{Rgba, RgbaImage};
+use kingdom_core::TerrainType;
+use kingdom_render::terrain_base_color;
 
 const TILE_W: u32 = 49;
 const TILE_H: u32 = 56;

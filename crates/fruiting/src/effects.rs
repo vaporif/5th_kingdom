@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use fungai_core::{
+use kingdom_core::{
     GridPos, MUSHROOM_MOISTURE_BONUS, MUSHROOM_MOISTURE_RADIUS, MushroomEntity, Occupant,
     RegionStates, Tile,
 };
 
-pub fn mufungai_effect_system(
+pub fn mukingdom_effect_system(
     mushrooms: Query<&MushroomEntity>,
     mut tiles: Query<(&GridPos, &mut Tile)>,
     mut region_states: ResMut<RegionStates>,
@@ -36,7 +36,7 @@ pub fn mufungai_effect_system(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::{FragmentId, GridWorld, Hex, RegionStates};
+    use kingdom_core::{FragmentId, GridWorld, Hex, RegionStates};
 
     fn test_app() -> App {
         let mut app = App::new();
@@ -51,10 +51,10 @@ mod tests {
     }
 
     #[test]
-    fn mufungai_boosts_moisture_within_radius() {
+    fn mukingdom_boosts_moisture_within_radius() {
         let mut app = test_app();
 
-        let mufungai_pos = Hex::new(5, 5);
+        let mukingdom_pos = Hex::new(5, 5);
         // Hex distance 2 -- well within MUSHROOM_MOISTURE_RADIUS (5)
         let near_pos = Hex::new(5, 3);
         // Hex distance 30 -- far outside
@@ -79,11 +79,11 @@ mod tests {
 
         app.world_mut().spawn(MushroomEntity {
             fragment_id: FragmentId(0),
-            pos: mufungai_pos,
+            pos: mukingdom_pos,
             vision_radius: 10.0,
         });
 
-        app.add_systems(Update, mufungai_effect_system);
+        app.add_systems(Update, mukingdom_effect_system);
         app.update();
 
         let near_tile = app.world().get::<Tile>(near_entity).expect("near tile");
@@ -102,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn mufungai_grants_nutrient_bonus_to_nearby_player_region() {
+    fn mukingdom_grants_nutrient_bonus_to_nearby_player_region() {
         let mut app = test_app();
 
         let rid = app
@@ -116,9 +116,9 @@ mod tests {
             .expect("region")
             .nutrients;
 
-        let mufungai_pos = Hex::new(5, 5);
+        let mukingdom_pos = Hex::new(5, 5);
         // Place a player tile at a hex neighbor (distance 1, within bonus radius of 3)
-        let neighbor = mufungai_pos.all_neighbors()[0];
+        let neighbor = mukingdom_pos.all_neighbors()[0];
         spawn_tile_at(
             &mut app,
             neighbor,
@@ -130,11 +130,11 @@ mod tests {
 
         app.world_mut().spawn(MushroomEntity {
             fragment_id: FragmentId(0),
-            pos: mufungai_pos,
+            pos: mukingdom_pos,
             vision_radius: 10.0,
         });
 
-        app.add_systems(Update, mufungai_effect_system);
+        app.add_systems(Update, mukingdom_effect_system);
         app.update();
 
         let nutrients = app
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn mufungai_moisture_caps_at_one() {
+    fn mukingdom_moisture_caps_at_one() {
         let mut app = test_app();
 
         let pos = Hex::new(5, 5);
@@ -169,7 +169,7 @@ mod tests {
             vision_radius: 10.0,
         });
 
-        app.add_systems(Update, mufungai_effect_system);
+        app.add_systems(Update, mukingdom_effect_system);
         app.update();
 
         let tile = app.world().get::<Tile>(entity).expect("tile");
@@ -184,7 +184,7 @@ mod tests {
     fn no_crash_with_no_mushrooms() {
         let mut app = test_app();
         spawn_tile_at(&mut app, Hex::ZERO, Tile::default());
-        app.add_systems(Update, mufungai_effect_system);
+        app.add_systems(Update, mukingdom_effect_system);
         app.update();
     }
 }

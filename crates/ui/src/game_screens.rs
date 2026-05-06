@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{GamePhase, GameState, Tile};
+use kingdom_core::{GamePhase, GameState, Tile};
 
 const RIVAL_CONTROL_THRESHOLD: f32 = 0.6;
 const LOSS_TURN_THRESHOLD: u32 = 20;
@@ -67,7 +67,7 @@ pub fn spawn_title_card(mut commands: Commands) {
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("Fungai"),
+                Text::new("The Fifth Kingdom"),
                 TextFont {
                     font_size: 64.0,
                     ..default()
@@ -209,7 +209,7 @@ pub fn restart_button_system(
 mod tests {
     use bevy::ecs::system::RunSystemOnce;
 
-    use fungai_core::{GridPos, GridWorld, Hex, Occupant, RivalId, TerrainType};
+    use kingdom_core::{GridPos, GridWorld, Hex, Occupant, RivalId, TerrainType};
 
     use super::*;
 

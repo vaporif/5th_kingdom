@@ -1,5 +1,5 @@
 [package]
-name = "fungai_render"
+name = "kingdom_render"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
@@ -8,5 +8,5 @@ license-file.workspace = true
 bevy = { workspace = true }
 hexx = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
-fungai_core = { workspace = true }
-fungai_world = { workspace = true }
+kingdom_core = { workspace = true }
+kingdom_world = { workspace = true }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use fungai_core::SimulationSystems;
+use kingdom_core::SimulationSystems;
 
 mod discovery;
 mod fragment;

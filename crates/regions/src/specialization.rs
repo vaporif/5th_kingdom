@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use fungai_core::{RegionStates, SPEC_TIER_1};
+use kingdom_core::{RegionStates, SPEC_TIER_1};
 
 const INVESTMENT_RATE: f32 = 2.0;
 
@@ -32,7 +32,7 @@ pub fn specialization_system(mut region_states: ResMut<RegionStates>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fungai_core::SpecializationType;
+    use kingdom_core::SpecializationType;
 
     fn test_app() -> App {
         let mut app = App::new();
