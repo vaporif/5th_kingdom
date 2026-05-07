@@ -2252,7 +2252,7 @@ just dev
 
 Expected: game launches; if you paint with the P-key (T5 will replace this) and the network reaches a plant root or radiation, sugars / melanin should accrue. HUD doesn't show them yet — T6 adds the display. Use `kingdom_core::RegionStates` inspection in the entity inspector if available.
 
-- [ ] **Step 11: Commit T4**
+- [x] **Step 11: Commit T4**
 
 ```bash
 git add -A

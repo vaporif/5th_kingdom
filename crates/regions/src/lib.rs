@@ -7,7 +7,7 @@ mod fragment;
 mod mutation;
 mod slot_machine;
 
-pub use discovery::{DecompProgress, decomposer_discovery_system};
+pub use discovery::{DecompProgress, decomposition_system};
 pub use fragment::fragment_system;
 pub use mutation::{AppliedMutations, MutationSelection, mutation_system};
 pub use slot_machine::{SlotMachineRng, SlotMachineTriggered, slot_machine_system};
@@ -25,7 +25,7 @@ impl Plugin for DiscoveryPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DecompProgress>().add_systems(
             Update,
-            decomposer_discovery_system.in_set(RegionsSystems::Discovery),
+            decomposition_system.in_set(RegionsSystems::Discovery),
         );
     }
 }

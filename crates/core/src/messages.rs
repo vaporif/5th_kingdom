@@ -15,6 +15,7 @@ pub struct TileDiscovered {
 #[derive(Message)]
 pub struct DecompositionComplete {
     pub pos: Hex,
+    pub was_unique: bool,
 }
 
 #[derive(Message)]
