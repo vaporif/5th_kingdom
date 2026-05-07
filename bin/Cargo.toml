@@ -8,6 +8,7 @@ default-run = "TheFifthKingdom"
 [features]
 dev = ["bevy/dynamic_linking", "bevy/hotpatching", "bevy/dev"]
 gen-atlas = ["dep:image"]
+trace = ["bevy/trace_tracy"]
 
 [dependencies]
 bevy = { workspace = true }

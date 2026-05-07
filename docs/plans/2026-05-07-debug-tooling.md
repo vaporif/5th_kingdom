@@ -154,7 +154,7 @@ git commit -m "diag: log process CPU and memory alongside FPS and entity count"
 
 Tracy itself runs as a separate GUI app. The Bevy book recommends `tracy-profiler` 0.11.x for Bevy 0.18; the version is pinned by the `bevy/trace_tracy` feature internally — we don't pin it ourselves.
 
-- [ ] **Step 1: Add the `trace` feature to `bin/Cargo.toml`**
+- [x] **Step 1: Add the `trace` feature to `bin/Cargo.toml`**
 
 In `bin/Cargo.toml`, extend the `[features]` block:
 
@@ -165,12 +165,12 @@ gen-atlas = ["dep:image"]
 trace = ["bevy/trace_tracy"]
 ```
 
-- [ ] **Step 2: Verify the feature compiles**
+- [x] **Step 2: Verify the feature compiles**
 
 Run: `cargo check -p kingdom --features trace`
 Expected: compiles without errors. The first build will pull in `tracing-tracy` and `tracy-client` — that's normal.
 
-- [ ] **Step 3: Document usage in CLAUDE.md**
+- [x] **Step 3: Document usage in CLAUDE.md**
 
 In `CLAUDE.md`, find the `## Build & Development Commands` section and append one row to the code block:
 
@@ -195,17 +195,17 @@ releases). Launch the GUI first, then run the game with `--features trace` —
 the game connects automatically.
 ```
 
-- [ ] **Step 4: Smoke-test the trace build**
+- [x] **Step 4: Smoke-test the trace build**
 
 Run: `cargo build -p kingdom --features trace 2>&1 | tail -5`
 Expected: build succeeds. We don't actually launch Tracy in this step — that requires the GUI app, which is out of band. The build-success check is enough to verify the feature is wired.
 
-- [ ] **Step 5: Run the lint pass**
+- [x] **Step 5: Run the lint pass**
 
 Run: `just lint`
 Expected: no warnings. (`just lint` doesn't pass `--features trace`, so the trace-only code paths aren't linted here. That's fine — they're entirely inside Bevy.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add bin/Cargo.toml CLAUDE.md
