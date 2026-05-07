@@ -192,33 +192,33 @@ pub fn bias_glow_render_system(
     for (tile_e, gpos, tile) in changed_tiles.iter() {
         let mag = tile.priority_bias.length();
         let visible = mag >= BIAS_GLOW_VISIBLE_THRESHOLD;
-        let existing_glow = existing_by_source.get(&tile_e).copied();
-        match (existing_glow, visible) {
+        match (existing_by_source.get(&tile_e).copied(), visible) {
             (Some(glow_e), false) => {
                 commands.entity(glow_e).despawn();
             }
             (Some(glow_e), true) => {
-                commands.entity(glow_e).insert(glow_sprite(mag, quad_size));
+                let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
+                commands.entity(glow_e).insert(Sprite {
+                    color: Color::srgba(1.0, 0.7, 0.3, alpha),
+                    custom_size: Some(quad_size),
+                    ..default()
+                });
             }
             (None, true) => {
+                let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
                 let world = layout.hex_to_world_pos(gpos.0);
                 commands.spawn((
                     BiasGlowMarker { source: tile_e },
-                    glow_sprite(mag, quad_size),
+                    Sprite {
+                        color: Color::srgba(1.0, 0.7, 0.3, alpha),
+                        custom_size: Some(quad_size),
+                        ..default()
+                    },
                     Transform::from_xyz(world.x, world.y, 0.7),
                 ));
             }
             (None, false) => {}
         }
-    }
-}
-
-fn glow_sprite(mag: f32, quad_size: Vec2) -> Sprite {
-    let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
-    Sprite {
-        color: Color::srgba(1.0, 0.7, 0.3, alpha),
-        custom_size: Some(quad_size),
-        ..default()
     }
 }
 
