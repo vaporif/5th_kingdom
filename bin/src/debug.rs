@@ -77,7 +77,7 @@ fn log_diagnostics(world: &mut World, mut last_log: Local<f32>) {
             (label, archetype.len())
         })
         .collect();
-    buckets.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    buckets.sort_unstable_by_key(|b| std::cmp::Reverse(b.1));
     for (label, count) in buckets.iter().take(8) {
         info!("  archetype count={count} :: {label}");
     }
