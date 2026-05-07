@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use kingdom_core::{
-    GridPos, GridWorld, Hex, HyphalTip, MushroomEntity, Occupant, RegionId, RegionStates,
+    CLAIM_THRESHOLD, GridPos, GridWorld, Hex, HyphalTip, MushroomEntity, RegionId, RegionStates,
     SPORE_RELAY_ACCURACY_RADIUS, Tile,
 };
 use rand::prelude::*;
@@ -78,11 +78,14 @@ pub fn spore_system(
     spore_action.cooldown_remaining = spore_action.cooldown_max;
 }
 
+// THRESHOLD-GATED: only count a region as owning the area if its network has
+// actually arrived (biomass past CLAIM_THRESHOLD), not just a sub-threshold tag.
 fn find_owning_region(tiles: &Query<(&GridPos, &Tile)>, pos: Hex) -> Option<RegionId> {
     for (gpos, tile) in tiles.iter() {
         let dist = gpos.0.unsigned_distance_to(pos);
         if dist <= 3
-            && let Occupant::Player(rid) = tile.occupant
+            && let Some(rid) = tile.region_id
+            && tile.biomass >= CLAIM_THRESHOLD
         {
             return Some(rid);
         }
@@ -101,11 +104,8 @@ fn pick_spore_landing(
         .iter()
         .filter_map(|(gpos, tile)| {
             let dist = gpos.0.unsigned_distance_to(origin);
-            (dist <= radius
-                && tile.terrain.is_passable()
-                && !tile.occupant.is_player()
-                && !tile.occupant.is_rival())
-            .then_some(gpos.0)
+            (dist <= radius && tile.terrain.is_passable() && tile.region_id.is_none())
+                .then_some(gpos.0)
         })
         .choose(rng)
 }
@@ -160,7 +160,8 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
+                biomass: 0.5,
                 ..default()
             },
         );
@@ -170,7 +171,8 @@ mod tests {
             if h == center {
                 // Already spawned above, but spawn_tile_at will just overwrite the grid entry
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
+                    biomass: 0.5,
                     ..default()
                 }
             } else {
@@ -224,7 +226,8 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
+                biomass: 0.5,
                 ..default()
             },
         );
@@ -232,7 +235,8 @@ mod tests {
         spawn_hex_area(&mut app, center, 3, |h| {
             if h == center {
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
+                    biomass: 0.5,
                     ..default()
                 }
             } else {
@@ -317,7 +321,8 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
+                biomass: 0.5,
                 ..default()
             },
         );
@@ -325,7 +330,8 @@ mod tests {
         spawn_hex_area(&mut app, center, 3, |h| {
             if h == center {
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
+                    biomass: 0.5,
                     ..default()
                 }
             } else {
@@ -365,7 +371,8 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
+                biomass: 0.5,
                 ..default()
             },
         );
@@ -373,7 +380,8 @@ mod tests {
         spawn_hex_area(&mut app, center, 3, |h| {
             if h == center {
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
+                    biomass: 0.5,
                     ..default()
                 }
             } else {

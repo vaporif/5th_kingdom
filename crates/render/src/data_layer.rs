@@ -2,9 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use hexx::Hex;
-use kingdom_core::{
-    GridPos, GridWorld, HexLayout, HyphalTip, Occupant, RegionId, SelectedRegion, Tile,
-};
+use kingdom_core::{GridPos, GridWorld, HexLayout, HyphalTip, RegionId, SelectedRegion, Tile};
 
 #[derive(Resource, Default, Debug)]
 pub struct BranchGraph {
@@ -62,7 +60,7 @@ pub fn extract_branch_graph(
     graph.edges.clear();
 
     for (gpos, tile) in tiles.iter() {
-        if let Occupant::Player(rid) = tile.occupant {
+        if let Some(rid) = tile.region_id {
             graph.nodes.insert(
                 gpos.0,
                 BranchNode {
@@ -117,7 +115,7 @@ pub fn extract_region_hulls(
 
     let mut region_positions: HashMap<RegionId, Vec<Vec2>> = HashMap::default();
     for (gpos, tile) in tiles.iter() {
-        if let Occupant::Player(rid) = tile.occupant {
+        if let Some(rid) = tile.region_id {
             region_positions
                 .entry(rid)
                 .or_default()
@@ -229,7 +227,7 @@ pub fn extract_selected_region_tiles(
     let new_tiles: Vec<Hex> = match selected.region_id {
         Some(rid) => tiles
             .iter()
-            .filter_map(|(gpos, tile)| (tile.occupant.region_id() == Some(rid)).then_some(gpos.0))
+            .filter_map(|(gpos, tile)| (tile.region_id == Some(rid)).then_some(gpos.0))
             .collect(),
         None => Vec::new(),
     };
@@ -271,7 +269,7 @@ mod tests {
                 .spawn((
                     GridPos(pos),
                     Tile {
-                        occupant: Occupant::Player(rid),
+                        region_id: Some(rid),
                         biomass: 1.0,
                         ..default()
                     },
@@ -330,7 +328,7 @@ mod tests {
                 app.world_mut().spawn((
                     GridPos(pos),
                     Tile {
-                        occupant: Occupant::Player(rid),
+                        region_id: Some(rid),
                         ..default()
                     },
                 ));
@@ -362,7 +360,7 @@ mod tests {
             .spawn((
                 GridPos(pos),
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
                     biomass: 1.0,
                     ..default()
                 },
@@ -430,7 +428,7 @@ mod tests {
             .spawn((
                 GridPos(pos),
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
                     biomass: 1.0,
                     ..default()
                 },

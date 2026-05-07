@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::ecs::message::MessageWriter;
 use bevy::prelude::*;
 use kingdom_core::{
-    DecompositionComplete, GridPos, Hex, Occupant, RegionStates, Tile, TileContents, UnlockPool,
+    DecompositionComplete, GridPos, Hex, RegionStates, Tile, TileContents, UnlockPool,
 };
 
 use crate::slot_machine::SlotMachineTriggered;
@@ -23,9 +23,9 @@ pub fn decomposer_discovery_system(
     mut slot_messages: MessageWriter<SlotMachineTriggered>,
 ) {
     for (gpos, mut tile) in tiles.iter_mut() {
-        let Occupant::Player(_) = tile.occupant else {
+        if tile.region_id.is_none() {
             continue;
-        };
+        }
 
         if !matches!(tile.contents, Some(TileContents::UniqueDecomposable(_))) {
             continue;
@@ -76,7 +76,7 @@ mod tests {
             .spawn((
                 GridPos(pos),
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
                     contents: Some(TileContents::UniqueDecomposable(0)),
                     ..default()
                 },

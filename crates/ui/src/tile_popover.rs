@@ -2,8 +2,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use kingdom_core::{
-    GridWorld, Hex, HexLayout, Occupant, RegionStates, SelectedRegion, TerrainType, Tile,
-    TileContents,
+    GridWorld, Hex, HexLayout, RegionStates, SelectedRegion, TerrainType, Tile, TileContents,
 };
 use kingdom_input::GameCamera;
 
@@ -130,10 +129,9 @@ fn format_tile(hex: Hex, tile: &Tile, region_states: &RegionStates) -> String {
         TerrainType::Toxic => "Toxic",
         TerrainType::Surface => "Surface",
     };
-    let occupant = match tile.occupant {
-        Occupant::Empty => "Empty".into(),
-        Occupant::Player(rid) => format!("Player (region {})", rid.0),
-        Occupant::Rival(rid) => format!("Rival {}", rid.0),
+    let occupant = match tile.region_id {
+        None => "Empty".into(),
+        Some(rid) => format!("Player (region {})", rid.0),
     };
     let contents = tile.contents.map(|c| match c {
         TileContents::OrganicMatter => "Organic matter".into(),
@@ -156,17 +154,14 @@ fn format_tile(hex: Hex, tile: &Tile, region_states: &RegionStates) -> String {
         out.push_str("\n(undiscovered)");
     }
     out.push_str(&format!(
-        "\nN:{:.0} M:{:.0} B:{:.0}",
-        tile.nutrient_level * 100.0,
+        "\nSoil:{:.0} M:{:.0} R:{:.0} B:{:.0}",
+        tile.soil_richness * 100.0,
         tile.moisture * 100.0,
+        tile.radiation * 100.0,
         tile.biomass,
     ));
 
-    if let Some(state) = tile
-        .occupant
-        .region_id()
-        .and_then(|rid| region_states.get(rid))
-    {
+    if let Some(state) = tile.region_id.and_then(|rid| region_states.get(rid)) {
         out.push_str(&format!(
             "\nRegion {} | tiles {}",
             state.region_id.0, state.tile_count,

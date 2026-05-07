@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use hexx::Hex;
-use kingdom_core::{GridPos, GridWorld, Occupant, RegionId, RegionStates, Tile};
+use kingdom_core::{GridPos, GridWorld, RegionId, RegionStates, Tile};
 
 pub fn region_tracking_system(
     mut tiles: Query<(&GridPos, &mut Tile)>,
@@ -11,10 +11,7 @@ pub fn region_tracking_system(
 ) {
     let player_tiles: HashMap<Hex, RegionId> = tiles
         .iter()
-        .filter_map(|(gpos, tile)| match tile.occupant {
-            Occupant::Player(rid) => Some((gpos.0, rid)),
-            _ => None,
-        })
+        .filter_map(|(gpos, tile)| tile.region_id.map(|rid| (gpos.0, rid)))
         .collect();
 
     for state in region_states.regions.values_mut() {
@@ -41,7 +38,7 @@ pub fn region_tracking_system(
 
         if let Some(state) = region_states.get_mut(rid) {
             state.tile_count = positions.len() as u32;
-            state.biomass = biomass_sum;
+            state.total_biomass = biomass_sum;
         }
 
         if rid != *original_rid {
@@ -49,7 +46,7 @@ pub fn region_tracking_system(
                 if let Some(&entity) = grid.tiles.get(&pos)
                     && let Ok((_, mut tile)) = tiles.get_mut(entity)
                 {
-                    tile.occupant = Occupant::Player(rid);
+                    tile.region_id = Some(rid);
                 }
             }
         }
@@ -101,13 +98,13 @@ mod tests {
         app
     }
 
-    fn spawn_tile(app: &mut App, pos: Hex, occupant: Occupant) -> Entity {
+    fn spawn_tile(app: &mut App, pos: Hex, region_id: Option<RegionId>) -> Entity {
         let entity = app
             .world_mut()
             .spawn((
                 GridPos(pos),
                 Tile {
-                    occupant,
+                    region_id,
                     ..default()
                 },
             ))
@@ -128,9 +125,9 @@ mod tests {
             .create_region();
 
         // Three horizontally adjacent hexes (axial coords: q varies, r=0)
-        spawn_tile(&mut app, Hex::new(0, 0), Occupant::Player(rid));
-        spawn_tile(&mut app, Hex::new(1, 0), Occupant::Player(rid));
-        spawn_tile(&mut app, Hex::new(2, 0), Occupant::Player(rid));
+        spawn_tile(&mut app, Hex::new(0, 0), Some(rid));
+        spawn_tile(&mut app, Hex::new(1, 0), Some(rid));
+        spawn_tile(&mut app, Hex::new(2, 0), Some(rid));
 
         app.add_systems(Update, region_tracking_system);
         app.update();
@@ -149,11 +146,11 @@ mod tests {
             .create_region();
 
         // Two clusters separated by a gap (non-adjacent in hex space)
-        spawn_tile(&mut app, Hex::new(0, 0), Occupant::Player(rid));
-        spawn_tile(&mut app, Hex::new(1, 0), Occupant::Player(rid));
-        spawn_tile(&mut app, Hex::new(2, 0), Occupant::Empty); // gap
-        spawn_tile(&mut app, Hex::new(3, 0), Occupant::Player(rid));
-        spawn_tile(&mut app, Hex::new(4, 0), Occupant::Player(rid));
+        spawn_tile(&mut app, Hex::new(0, 0), Some(rid));
+        spawn_tile(&mut app, Hex::new(1, 0), Some(rid));
+        spawn_tile(&mut app, Hex::new(2, 0), None); // gap
+        spawn_tile(&mut app, Hex::new(3, 0), Some(rid));
+        spawn_tile(&mut app, Hex::new(4, 0), Some(rid));
 
         app.add_systems(Update, region_tracking_system);
         app.update();

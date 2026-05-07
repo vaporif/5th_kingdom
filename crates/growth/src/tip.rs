@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 use kingdom_core::{
-    ANASTOMOSIS_BIOMASS_BONUS, GridPos, GridWorld, Hex, HexLayout, HyphalTip, Occupant, RegionId,
+    ANASTOMOSIS_BIOMASS_BONUS, GridPos, GridWorld, Hex, HexLayout, HyphalTip, RegionId,
     RegionStates, Tile,
 };
 use rand::prelude::*;
@@ -33,7 +33,7 @@ pub fn hyphal_tip_system(
         tip.age += 1;
         let pos = gpos.0;
 
-        let (gradient, bias, region_nutrients) = {
+        let (gradient, bias, region_sugars) = {
             let tile = grid
                 .tiles
                 .get(&pos)
@@ -41,13 +41,11 @@ pub fn hyphal_tip_system(
                 .map(|(_, t)| t);
             let grad = tile.map_or(Vec2::ZERO, |t| t.nutrient_gradient);
             let bias = tile.map_or(Vec2::ZERO, |t| t.priority_bias);
-            let nutrients = region_states
-                .get(tip.region_id)
-                .map_or(0.0, |r| r.nutrients);
-            (grad, bias, nutrients)
+            let sugars = region_states.get(tip.region_id).map_or(0.0, |r| r.sugars);
+            (grad, bias, sugars)
         };
 
-        if region_nutrients < 0.1 {
+        if region_sugars < 0.1 {
             tips_to_despawn.push(tip_entity);
             continue;
         }
@@ -68,16 +66,13 @@ pub fn hyphal_tip_system(
                 if !ntile.terrain.is_passable() {
                     continue;
                 }
-                if ntile.occupant.is_player() {
-                    continue;
-                }
-                if ntile.occupant.is_rival() {
+                if ntile.region_id.is_some() {
                     continue;
                 }
                 let from_world = layout.hex_to_world_pos(pos);
                 let to_world = layout.hex_to_world_pos(npos);
                 let offset = (to_world - from_world).normalize_or_zero();
-                let score = direction.dot(offset) + ntile.nutrient_level * 0.5;
+                let score = direction.dot(offset) + ntile.soil_richness * 0.5;
                 if score > best_frontier_score {
                     best_frontier_score = score;
                     best_frontier_pos = Some(npos);
@@ -106,9 +101,9 @@ pub fn hyphal_tip_system(
 
         if let Some(&tentity) = grid.tiles.get(target)
             && let Ok((_, mut tile)) = tiles.get_mut(tentity)
-            && tile.occupant == Occupant::Empty
+            && tile.region_id.is_none()
         {
-            tile.occupant = Occupant::Player(*rid);
+            tile.region_id = Some(*rid);
             tile.biomass = 0.5;
         }
 
@@ -166,7 +161,7 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
                 nutrient_gradient: dir,
                 biomass: 1.0,
                 ..default()
@@ -201,7 +196,7 @@ mod tests {
             .world()
             .get::<Tile>(grid.tiles[&target])
             .expect("tile should exist");
-        assert!(target_tile.occupant.is_player());
+        assert!(target_tile.region_id.is_some());
     }
 
     #[test]
@@ -219,7 +214,7 @@ mod tests {
             &mut app,
             center,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
                 biomass: 1.0,
                 ..default()
             },
@@ -282,7 +277,7 @@ mod tests {
             &mut app,
             tip_a,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
                 nutrient_gradient: dir_a,
                 biomass: 2.0,
                 ..default()
@@ -292,7 +287,7 @@ mod tests {
             &mut app,
             tip_b,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
                 nutrient_gradient: dir_b,
                 biomass: 2.0,
                 ..default()

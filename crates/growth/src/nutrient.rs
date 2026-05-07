@@ -10,13 +10,13 @@ pub fn nutrient_gradient_system(
 ) {
     let nutrient_map: HashMap<Hex, f32> = tiles
         .iter()
-        .map(|(gp, t)| (gp.0, t.nutrient_level))
+        .map(|(gp, t)| (gp.0, t.soil_richness))
         .collect();
 
     for (gpos, mut tile) in tiles.iter_mut() {
         let pos = gpos.0;
         let mut gradient = Vec2::ZERO;
-        let my_nutrient = tile.nutrient_level;
+        let my_nutrient = tile.soil_richness;
         let from_world = layout.hex_to_world_pos(pos);
 
         for (npos, _) in grid.neighbors(pos) {
@@ -43,7 +43,7 @@ pub fn nutrient_production_system(
     let mut tiles_per_region: HashMap<RegionId, u32> = HashMap::new();
 
     for (_, tile) in tiles.iter() {
-        if let Occupant::Player(rid) = tile.occupant {
+        if let Some(rid) = tile.region_id {
             *tiles_per_region.entry(rid).or_insert(0) += 1;
         }
     }
@@ -53,10 +53,8 @@ pub fn nutrient_production_system(
         let production = tile_count as f32 * 0.3;
         let consumption = tile_count as f32 * 0.15;
 
-        state.nutrients += production - consumption;
-        state.nutrients = state.nutrients.max(0.0);
-
-        state.energy += (production * 0.1).min(5.0);
+        state.sugars += production - consumption;
+        state.sugars = state.sugars.max(0.0);
     }
 }
 
@@ -94,7 +92,7 @@ mod tests {
             &mut app,
             center,
             Tile {
-                nutrient_level: 0.1,
+                soil_richness: 0.1,
                 ..default()
             },
         );
@@ -102,7 +100,7 @@ mod tests {
             &mut app,
             rich_neighbor,
             Tile {
-                nutrient_level: 0.9,
+                soil_richness: 0.9,
                 ..default()
             },
         );
@@ -111,7 +109,7 @@ mod tests {
                 &mut app,
                 n,
                 Tile {
-                    nutrient_level: 0.1,
+                    soil_richness: 0.1,
                     ..default()
                 },
             );
@@ -147,13 +145,13 @@ mod tests {
             .resource_mut::<RegionStates>()
             .get_mut(rid)
             .expect("region exists")
-            .nutrients = 5.0;
+            .sugars = 5.0;
 
         spawn_tile_at(
             &mut app,
             Hex::ZERO,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
                 contents: Some(TileContents::OrganicMatter),
                 ..default()
             },
@@ -164,7 +162,7 @@ mod tests {
 
         let rs = app.world().resource::<RegionStates>();
         assert!(
-            rs.get(rid).expect("region exists").nutrients > 5.0,
+            rs.get(rid).expect("region exists").sugars > 5.0,
             "player tiles should produce nutrients"
         );
     }

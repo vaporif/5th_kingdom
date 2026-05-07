@@ -8,9 +8,9 @@ pub struct RegionId(pub u32);
 #[derive(Clone, Debug, Reflect)]
 pub struct RegionState {
     pub region_id: RegionId,
-    pub nutrients: f32,
-    pub energy: f32,
-    pub biomass: f32,
+    pub sugars: f32,
+    pub melanin: f32,
+    pub total_biomass: f32,
     pub tile_count: u32,
 }
 
@@ -18,9 +18,9 @@ impl RegionState {
     pub fn new(id: RegionId) -> Self {
         Self {
             region_id: id,
-            nutrients: 10.0,
-            energy: 0.0,
-            biomass: 0.0,
+            sugars: 10.0,
+            melanin: 0.0,
+            total_biomass: 0.0,
             tile_count: 0,
         }
     }

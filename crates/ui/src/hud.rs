@@ -175,11 +175,11 @@ pub fn update_hud(inputs: HudInputs, mut texts: HudTexts) {
         match state {
             Some(state) => {
                 **text = format!(
-                    "Region {} | N:{:.0} E:{:.0} B:{:.0} | Tiles:{}",
+                    "Region {} | S:{:.0} M:{:.0} B:{:.0} | Tiles:{}",
                     state.region_id.0,
-                    state.nutrients,
-                    state.energy,
-                    state.biomass,
+                    state.sugars,
+                    state.melanin,
+                    state.total_biomass,
                     state.tile_count,
                 );
             }

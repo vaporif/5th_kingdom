@@ -55,6 +55,6 @@ pub fn selection_system(
 
     if let Ok(tile) = tiles.get(entity) {
         selected.selected_pos = Some(hex);
-        selected.region_id = tile.occupant.region_id();
+        selected.region_id = tile.region_id;
     }
 }

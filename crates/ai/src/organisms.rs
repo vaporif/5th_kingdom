@@ -30,12 +30,11 @@ pub fn neutral_fungi_system(
     for (entity, gpos, mut fungus) in fungi.iter_mut() {
         if let Some(&tile_entity) = grid.tiles.get(&gpos.0)
             && let Ok(tile) = tiles.get(tile_entity)
-            && tile.occupant.is_player()
+            && let Some(rid) = tile.region_id
         {
             fungus.merge_progress += 0.05;
 
             if fungus.merge_progress >= 1.0 {
-                let rid = tile.occupant.region_id().unwrap();
                 merged_messages.write(NeutralFungiMerged {
                     fungus_id: fungus.fungus_id,
                     region_id: rid,
@@ -73,7 +72,7 @@ pub fn fauna_system(
 
         if let Some(&tile_entity) = grid.tiles.get(&pos)
             && let Ok(mut tile) = tiles.get_mut(tile_entity)
-            && (tile.occupant.is_player() || tile.occupant.is_rival())
+            && tile.region_id.is_some()
         {
             tile.biomass = (tile.biomass - agent.damage_per_tick).max(0.0);
         }
@@ -97,15 +96,15 @@ pub fn bacteria_system(
         if let Some(&tile_entity) = grid.tiles.get(&gpos.0)
             && let Ok(mut tile) = tiles.get_mut(tile_entity)
         {
-            tile.nutrient_level = (tile.nutrient_level - 0.05).max(0.0);
+            tile.soil_richness = (tile.soil_richness - 0.05).max(0.0);
 
-            if tile.nutrient_level <= 0.01 {
+            if tile.soil_richness <= 0.01 {
                 colony.spread_timer += 1;
                 if colony.spread_timer >= colony.spread_interval {
                     colony.spread_timer = 0;
                     for (npos, nentity) in grid.neighbors(gpos.0) {
                         if let Ok(ntile) = tiles.get(nentity)
-                            && ntile.nutrient_level > 0.1
+                            && ntile.soil_richness > 0.1
                             && ntile.biomass < BACTERIA_BIOMASS_BLOCK_THRESHOLD
                         {
                             commands.spawn((
@@ -146,7 +145,7 @@ mod tests {
             .spawn((
                 GridPos(pos),
                 Tile {
-                    nutrient_level: 0.5,
+                    soil_richness: 0.5,
                     ..default()
                 },
             ))
@@ -168,6 +167,6 @@ mod tests {
         app.update();
 
         let tile = app.world().get::<Tile>(tile_e).unwrap();
-        assert!(tile.nutrient_level < 0.5, "bacteria should drain nutrients");
+        assert!(tile.soil_richness < 0.5, "bacteria should drain nutrients");
     }
 }

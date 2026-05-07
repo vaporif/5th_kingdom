@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use kingdom_core::{
-    GridPos, MUSHROOM_MOISTURE_BONUS, MUSHROOM_MOISTURE_RADIUS, MushroomEntity, Occupant,
+    CLAIM_THRESHOLD, GridPos, MUSHROOM_MOISTURE_BONUS, MUSHROOM_MOISTURE_RADIUS, MushroomEntity,
     RegionStates, Tile,
 };
 
@@ -18,9 +18,12 @@ pub fn mukingdom_effect_system(
                 tile.moisture = (tile.moisture + MUSHROOM_MOISTURE_BONUS * 0.1).min(1.0);
             }
 
+            // THRESHOLD-GATED: bonus only flows to a region whose network
+            // has actually arrived at this tile, not a sub-threshold tag.
             if bonus_region.is_none()
                 && dist <= 3
-                && let Occupant::Player(rid) = tile.occupant
+                && let Some(rid) = tile.region_id
+                && tile.biomass >= CLAIM_THRESHOLD
             {
                 bonus_region = Some(rid);
             }
@@ -28,7 +31,7 @@ pub fn mukingdom_effect_system(
 
         let Some(rid) = bonus_region else { continue };
         if let Some(state) = region_states.get_mut(rid) {
-            state.nutrients += 1.0;
+            state.sugars += 1.0;
         }
     }
 }
@@ -109,12 +112,12 @@ mod tests {
             .world_mut()
             .resource_mut::<RegionStates>()
             .create_region();
-        let initial_nutrients = app
+        let initial_sugars = app
             .world()
             .resource::<RegionStates>()
             .get(rid)
             .expect("region")
-            .nutrients;
+            .sugars;
 
         let mukingdom_pos = Hex::new(5, 5);
         // Place a player tile at a hex neighbor (distance 1, within bonus radius of 3)
@@ -123,7 +126,8 @@ mod tests {
             &mut app,
             neighbor,
             Tile {
-                occupant: Occupant::Player(rid),
+                region_id: Some(rid),
+                biomass: 0.5,
                 ..default()
             },
         );
@@ -137,15 +141,15 @@ mod tests {
         app.add_systems(Update, mukingdom_effect_system);
         app.update();
 
-        let nutrients = app
+        let sugars = app
             .world()
             .resource::<RegionStates>()
             .get(rid)
             .expect("region")
-            .nutrients;
+            .sugars;
         assert!(
-            nutrients > initial_nutrients,
-            "region nutrients should increase from mushroom bonus, got {nutrients}"
+            sugars > initial_sugars,
+            "region sugars should increase from mushroom bonus, got {sugars}"
         );
     }
 

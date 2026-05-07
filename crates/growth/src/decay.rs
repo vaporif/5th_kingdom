@@ -1,15 +1,15 @@
 use bevy::prelude::*;
-use kingdom_core::{Occupant, RegionStates, Tile};
+use kingdom_core::{RegionStates, Tile};
 
 pub fn decay_system(mut tiles: Query<&mut Tile>, region_states: Res<RegionStates>) {
     for mut tile in tiles.iter_mut() {
-        if let Occupant::Player(rid) = tile.occupant {
-            let starved = region_states.get(rid).is_none_or(|r| r.nutrients <= 0.0);
+        if let Some(rid) = tile.region_id {
+            let starved = region_states.get(rid).is_none_or(|r| r.sugars <= 0.0);
             if starved {
                 tile.biomass -= 0.1;
                 if tile.biomass <= 0.0 {
                     tile.biomass = 0.0;
-                    tile.occupant = Occupant::Empty;
+                    tile.region_id = None;
                 }
             }
         }
@@ -35,14 +35,14 @@ mod tests {
         let mut app = test_app();
         let mut rs = app.world_mut().resource_mut::<RegionStates>();
         let rid = rs.create_region();
-        rs.get_mut(rid).unwrap().nutrients = 0.0;
+        rs.get_mut(rid).unwrap().sugars = 0.0;
 
         let entity = app
             .world_mut()
             .spawn((
                 GridPos(Hex::ZERO),
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
                     biomass: 1.0,
                     ..default()
                 },
@@ -64,14 +64,14 @@ mod tests {
         let mut app = test_app();
         let mut rs = app.world_mut().resource_mut::<RegionStates>();
         let rid = rs.create_region();
-        rs.get_mut(rid).unwrap().nutrients = 0.0;
+        rs.get_mut(rid).unwrap().sugars = 0.0;
 
         let entity = app
             .world_mut()
             .spawn((
                 GridPos(Hex::ZERO),
                 Tile {
-                    occupant: Occupant::Player(rid),
+                    region_id: Some(rid),
                     biomass: 0.05,
                     ..default()
                 },
@@ -83,8 +83,7 @@ mod tests {
 
         let tile = app.world().get::<Tile>(entity).unwrap();
         assert_eq!(
-            tile.occupant,
-            Occupant::Empty,
+            tile.region_id, None,
             "tile should revert to empty at zero biomass"
         );
     }

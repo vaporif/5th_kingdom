@@ -5,3 +5,35 @@ pub const MUSHROOM_MOISTURE_RADIUS: i32 = 5;
 pub const SPORE_RELAY_ACCURACY_RADIUS: i32 = 5;
 pub const BACTERIA_BIOMASS_BLOCK_THRESHOLD: f32 = 5.0;
 pub const TRADE_LINK_NEGLECT_LIMIT: u32 = 20;
+
+// Density-flow tuning (T3).
+pub const CLAIM_THRESHOLD: f32 = 0.3;
+pub const HUB_THRESHOLD: f32 = 1.0;
+pub const BIOMASS_CAP: f32 = 2.0;
+pub const MIN_FLOW_DENSITY: f32 = 0.05;
+pub const AUTONOMOUS_FLOW_WEIGHT: f32 = 0.1;
+pub const BIASED_FLOW_WEIGHT: f32 = 0.6;
+pub const GRADIENT_FLOW_WEIGHT: f32 = 0.1;
+pub const FLOW_NOISE: f32 = 0.15;
+pub const WATER_GROWTH_COST: f32 = 0.05;
+
+// Bias and dieback (T3, T5).
+pub const BIAS_DECAY: f32 = 0.95;
+pub const BIAS_STROKE_INTENSITY: f32 = 0.5;
+pub const BIAS_MAGNITUDE_CAP: f32 = 1.5;
+pub const DIEBACK_THRESHOLD: f32 = 0.05;
+pub const DIEBACK_RATE: f32 = 0.95;
+
+// Resource yields (T4).
+pub const DECOMP_RATE: f32 = 0.02;
+pub const SUGAR_FROM_DECOMP: f32 = 0.5;
+pub const SUGAR_FROM_SYMBIOSIS: f32 = 0.1;
+pub const MELANIN_FROM_RADIATION: f32 = 0.1;
+pub const RADIATION_DEPLETION_RATE: f32 = 0.1;
+
+// Wisp input (T5).
+pub const DRAG_THRESHOLD_PX: f32 = 6.0;
+pub const TAP_TIME_MS: u32 = 150;
+pub const SAMPLE_INTERVAL_MS: u32 = 50;
+pub const SAMPLE_HEX_DISTANCE: f32 = 0.5;
+pub const WISP_SENSE_RADIUS_HEX: i32 = 5;
