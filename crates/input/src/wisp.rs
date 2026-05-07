@@ -10,6 +10,7 @@ use kingdom_core::{
 use leafwing_input_manager::prelude::*;
 
 use crate::action::Action;
+use crate::camera::GameCamera;
 
 #[derive(Default, Clone, Debug)]
 pub enum WispPhase {
@@ -36,20 +37,31 @@ pub struct TileTapped {
 }
 
 // State-machine drives bias painting from cursor + time + tiles + grid; the
-// 9-arg signature is the natural fit. `clippy::too_many_arguments` would
+// 10-arg signature is the natural fit. `clippy::too_many_arguments` would
 // force an artificial wrapper struct that hurts readability.
 #[allow(clippy::too_many_arguments)]
 pub fn wisp_input_system(
     actions: Res<ActionState<Action>>,
     time: Res<Time>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    cameras: Query<(&Camera, &GlobalTransform), With<GameCamera>>,
+    ui_interactions: Query<&Interaction, With<Button>>,
     layout: Res<HexLayout>,
     grid: Res<GridWorld>,
     mut tiles: Query<(&GridPos, &mut Tile)>,
     mut wisp: ResMut<WispState>,
     mut taps: MessageWriter<TileTapped>,
 ) {
+    // Don't consume clicks that land on UI buttons (slot machine, game-screen
+    // buttons, etc). Otherwise tapping a UI button also paints / taps the
+    // tile underneath.
+    if ui_interactions
+        .iter()
+        .any(|i| !matches!(i, Interaction::None))
+    {
+        return;
+    }
+
     let Some(cursor_world) = cursor_world_position(&windows, &cameras) else {
         return;
     };
@@ -58,6 +70,12 @@ pub fn wisp_input_system(
     let pressed = actions.pressed(&Action::Paint);
     let just_pressed = actions.just_pressed(&Action::Paint);
     let just_released = actions.just_released(&Action::Paint);
+
+    // Skip the per-tile snapshot allocation when the wisp has nothing to do
+    // this frame (no edge events and not currently held down).
+    if !pressed && !just_pressed && !just_released {
+        return;
+    }
 
     // Snapshot owned hex positions before any mutable tile borrow. The
     // proximity BFS later runs against this set, so the `tiles.get_mut(...)`
@@ -144,11 +162,11 @@ pub fn wisp_input_system(
 
 fn cursor_world_position(
     windows: &Query<&Window, With<PrimaryWindow>>,
-    cameras: &Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<GameCamera>>,
 ) -> Option<Vec2> {
     let window = windows.single().ok()?;
     let cursor = window.cursor_position()?;
-    let (camera, cam_xform) = cameras.iter().next()?;
+    let (camera, cam_xform) = cameras.single().ok()?;
     camera.viewport_to_world_2d(cam_xform, cursor).ok()
 }
 

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use kingdom_core::{
-    CLAIM_THRESHOLD, GridPos, MELANIN_FROM_RADIATION, RADIATION_DEPLETION_RATE, RegionStates, Tile,
+    BIOMASS_SNAP_EPSILON, GridPos, MELANIN_FROM_RADIATION, RADIATION_DEPLETION_RATE, RegionStates,
+    Tile,
 };
 
 pub fn melanin_system(
@@ -8,15 +9,21 @@ pub fn melanin_system(
     mut region_states: ResMut<RegionStates>,
 ) {
     for (_gpos, mut tile) in tiles.iter_mut() {
-        let Some(rid) = tile.region_id else { continue };
-        if tile.biomass < CLAIM_THRESHOLD || tile.radiation <= 0.0 {
+        if !tile.is_owned() {
             continue;
         }
+        if tile.radiation <= 0.0 {
+            continue;
+        }
+        let Some(rid) = tile.region_id else { continue };
         let yield_amt = MELANIN_FROM_RADIATION * tile.radiation;
         if let Some(state) = region_states.get_mut(rid) {
             state.melanin += yield_amt;
         }
         tile.radiation = (tile.radiation - yield_amt * RADIATION_DEPLETION_RATE).max(0.0);
+        if tile.radiation < BIOMASS_SNAP_EPSILON {
+            tile.radiation = 0.0;
+        }
     }
 }
 

@@ -11,7 +11,7 @@ mod entity_render;
 mod network_render;
 mod terrain_render;
 
-pub use data_layer::{BranchGraph, DiscoveryMap, PriorityBiasMap, RegionHulls};
+pub use data_layer::{BranchGraph, DiscoveryMap, RegionHulls};
 pub use network_render::catmull_rom;
 pub use terrain_render::{terrain_base_color, terrain_type_index};
 
@@ -27,7 +27,6 @@ impl Plugin for RenderPlugin {
             .init_resource::<BranchGraph>()
             .init_resource::<RegionHulls>()
             .init_resource::<data_layer::DiscoveryMap>()
-            .init_resource::<data_layer::PriorityBiasMap>()
             .init_resource::<data_layer::SelectedRegionTiles>()
             .add_systems(
                 Update,
@@ -41,7 +40,6 @@ impl Plugin for RenderPlugin {
             .add_systems(
                 Update,
                 (
-                    data_layer::extract_priority_bias_map,
                     data_layer::extract_selected_region_tiles,
                     terrain_render::assert_atlas_addresses_all_terrains,
                 ),

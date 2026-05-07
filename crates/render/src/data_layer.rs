@@ -37,11 +37,6 @@ pub struct DiscoveryMap {
 }
 
 #[derive(Resource, Default, Debug)]
-pub struct PriorityBiasMap {
-    pub biases: HashMap<Hex, Vec2>,
-}
-
-#[derive(Resource, Default, Debug)]
 pub struct SelectedRegionTiles {
     pub tiles: Vec<Hex>,
 }
@@ -191,21 +186,6 @@ pub fn extract_discovery_map(graph: Res<BranchGraph>, mut discovery: ResMut<Disc
         if discovered > 0.0 {
             discovery.discovered.insert(*tile, discovered);
         }
-    }
-}
-
-pub fn extract_priority_bias_map(
-    tiles: Query<(&GridPos, &Tile)>,
-    mut bias_map: ResMut<PriorityBiasMap>,
-) {
-    let new_biases: HashMap<Hex, Vec2> = tiles
-        .iter()
-        .filter_map(|(gpos, tile)| {
-            (tile.priority_bias.length_squared() > 0.001).then_some((gpos.0, tile.priority_bias))
-        })
-        .collect();
-    if bias_map.biases != new_biases {
-        bias_map.biases = new_biases;
     }
 }
 

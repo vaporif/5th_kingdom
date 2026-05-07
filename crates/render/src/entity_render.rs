@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use kingdom_core::{
-    BIAS_MAGNITUDE_CAP, FaunaAgent, FragmentAgent, FruitingBody, GridPos, Hex, HexLayout,
-    MushroomEntity, NeutralFungusAgent, OrganismSpriteLink, PlantRootAgent, Tile,
+    BIAS_GLOW_VISIBLE_THRESHOLD, BIAS_MAGNITUDE_CAP, FaunaAgent, FragmentAgent, FruitingBody,
+    GridPos, Hex, HexLayout, MushroomEntity, NeutralFungusAgent, OrganismSpriteLink,
+    PlantRootAgent, Tile,
 };
 
 use crate::assets::EntitySprites;
@@ -185,11 +186,14 @@ pub fn bias_glow_render_system(
 
     for (gpos, tile) in tiles.iter() {
         let mag = tile.priority_bias.length();
-        if mag < 0.05 {
+        if mag < BIAS_GLOW_VISIBLE_THRESHOLD {
             continue;
         }
         let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
         let world = layout.hex_to_world_pos(gpos.0);
+        // z=0.7 sits above the region highlight (z=0.5) but below the network
+        // (z=1.0) and organism sprites (z=2.0), so the glow hints at painted
+        // direction without occluding fauna or mushrooms.
         commands.spawn((
             BiasGlowMarker,
             Sprite {
@@ -197,7 +201,7 @@ pub fn bias_glow_render_system(
                 custom_size: Some(quad_size),
                 ..default()
             },
-            Transform::from_xyz(world.x, world.y, 5.0),
+            Transform::from_xyz(world.x, world.y, 0.7),
         ));
     }
 }

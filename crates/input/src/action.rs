@@ -8,7 +8,6 @@ pub enum Action {
     #[actionlike(Axis)]
     Zoom,
 
-    SelectTile,
     Paint,
 
     TogglePause,
@@ -24,10 +23,9 @@ pub fn default_input_map() -> InputMap<Action> {
 
     map.insert_axis(Action::Zoom, MouseScrollAxis::Y);
 
-    // SelectTile and Paint share the left mouse button. The wisp state machine
-    // disambiguates tap-vs-drag after the fact and emits TileTapped for taps;
-    // selection_system reads that message rather than just_pressed(SelectTile).
-    map.insert(Action::SelectTile, MouseButton::Left);
+    // Paint is bound to the left mouse button. The wisp state machine
+    // disambiguates tap-vs-drag and emits TileTapped for taps; selection_system
+    // reads that message rather than a dedicated SelectTile action.
     map.insert(Action::Paint, MouseButton::Left);
 
     map.insert(Action::TogglePause, KeyCode::Space);

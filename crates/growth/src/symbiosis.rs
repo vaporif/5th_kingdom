@@ -1,10 +1,10 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use kingdom_core::{
-    CLAIM_THRESHOLD, GridPos, GridWorld, PlantRootAgent, RegionStates, SUGAR_FROM_SYMBIOSIS, Tile,
-    TileContents,
+    GridPos, GridWorld, Hex, MIN_TRADE_MOISTURE, MOISTURE_COST_PER_SUGAR, PlantRootAgent,
+    RegionStates, SUGAR_FROM_SYMBIOSIS, Tile, TileContents,
 };
-
-const MIN_TRADE_MOISTURE: f32 = 0.3;
 
 pub fn symbiosis_system(
     mut tiles: Query<(&GridPos, &mut Tile)>,
@@ -12,19 +12,21 @@ pub fn symbiosis_system(
     grid: Res<GridWorld>,
     mut region_states: ResMut<RegionStates>,
 ) {
-    let snapshot: std::collections::HashMap<_, _> = tiles
-        .iter()
-        .map(|(gp, t)| (gp.0, (t.region_id, t.biomass, t.moisture, t.contents)))
-        .collect();
+    let snapshot: HashMap<Hex, Option<TileContents>> =
+        tiles.iter().map(|(gp, t)| (gp.0, t.contents)).collect();
 
     for (gpos, mut tile) in tiles.iter_mut() {
-        let Some(rid) = tile.region_id else { continue };
-        if tile.biomass < CLAIM_THRESHOLD || tile.moisture <= MIN_TRADE_MOISTURE {
+        if !tile.is_owned() {
             continue;
         }
+        if tile.moisture <= MIN_TRADE_MOISTURE {
+            continue;
+        }
+        let Some(rid) = tile.region_id else { continue };
 
+        // One trade per source tile per tick — keeps moisture cost bounded.
         for (npos, nentity) in grid.neighbors(gpos.0) {
-            let Some(&(_n_rid, _n_biomass, _n_moisture, n_contents)) = snapshot.get(&npos) else {
+            let Some(&n_contents) = snapshot.get(&npos) else {
                 continue;
             };
             if !matches!(n_contents, Some(TileContents::PlantRoot(_))) {
@@ -36,7 +38,9 @@ pub fn symbiosis_system(
             if let Some(state) = region_states.get_mut(rid) {
                 state.sugars += SUGAR_FROM_SYMBIOSIS;
             }
-            tile.moisture = (tile.moisture - SUGAR_FROM_SYMBIOSIS * 0.3).max(0.0);
+            tile.moisture =
+                (tile.moisture - SUGAR_FROM_SYMBIOSIS * MOISTURE_COST_PER_SUGAR).max(0.0);
+            break;
         }
     }
 }

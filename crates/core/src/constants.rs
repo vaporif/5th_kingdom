@@ -31,6 +31,8 @@ pub const SUGAR_FROM_DECOMP: f32 = 0.5;
 pub const SUGAR_FROM_SYMBIOSIS: f32 = 0.1;
 pub const MELANIN_FROM_RADIATION: f32 = 0.1;
 pub const RADIATION_DEPLETION_RATE: f32 = 0.1;
+pub const MIN_TRADE_MOISTURE: f32 = 0.3;
+pub const MOISTURE_COST_PER_SUGAR: f32 = 0.3;
 
 // Wisp input (T5).
 pub const DRAG_THRESHOLD_PX: f32 = 6.0;
@@ -38,3 +40,4 @@ pub const TAP_TIME_MS: u32 = 150;
 pub const SAMPLE_INTERVAL_MS: u32 = 50;
 pub const SAMPLE_HEX_DISTANCE: f32 = 0.5;
 pub const WISP_SENSE_RADIUS_HEX: i32 = 5;
+pub const BIAS_GLOW_VISIBLE_THRESHOLD: f32 = 0.05;

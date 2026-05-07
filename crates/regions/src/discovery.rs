@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use bevy::ecs::message::MessageWriter;
 use bevy::prelude::*;
 use kingdom_core::{
-    CLAIM_THRESHOLD, DECOMP_RATE, DecompositionComplete, GridPos, Hex, RegionStates,
-    SUGAR_FROM_DECOMP, Tile, TileContents,
+    DECOMP_RATE, DecompositionComplete, GridPos, Hex, RegionStates, SUGAR_FROM_DECOMP, Tile,
+    TileContents,
 };
 
 #[derive(Resource, Default, Debug, Clone, Reflect)]
@@ -19,10 +19,10 @@ pub fn decomposition_system(
     mut decomp_messages: MessageWriter<DecompositionComplete>,
 ) {
     for (gpos, mut tile) in tiles.iter_mut() {
-        let Some(rid) = tile.region_id else { continue };
-        if tile.biomass < CLAIM_THRESHOLD {
+        if !tile.is_owned() {
             continue;
         }
+        let Some(rid) = tile.region_id else { continue };
         let was_unique = match tile.contents {
             Some(TileContents::OrganicMatter) => false,
             Some(TileContents::UniqueDecomposable(_)) => true,
@@ -163,5 +163,42 @@ mod tests {
         );
         app.update();
         assert!(app.world().resource::<DecompProgress>().entries.is_empty());
+    }
+
+    #[test]
+    fn decomposition_progresses_across_ticks() {
+        let mut app = test_app();
+        let rid = app
+            .world_mut()
+            .resource_mut::<RegionStates>()
+            .create_region();
+        let pos = Hex::new(3, 3);
+        spawn(
+            &mut app,
+            pos,
+            Tile {
+                region_id: Some(rid),
+                biomass: 0.5,
+                contents: Some(TileContents::OrganicMatter),
+                ..default()
+            },
+        );
+        // 1/DECOMP_RATE = 50 ticks in real arithmetic; +1 absorbs f32 drift on
+        // the running progress sum.
+        for _ in 0..51 {
+            app.update();
+        }
+        let tile = app
+            .world_mut()
+            .query::<&Tile>()
+            .iter(app.world())
+            .next()
+            .unwrap()
+            .clone();
+        assert!(
+            tile.contents.is_none(),
+            "expected contents cleared after ~50 ticks, was {:?}",
+            tile.contents
+        );
     }
 }
