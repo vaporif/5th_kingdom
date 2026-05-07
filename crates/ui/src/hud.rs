@@ -159,8 +159,9 @@ pub fn update_hud(inputs: HudInputs, mut texts: HudTexts) {
 
     if let Ok(mut text) = texts.turn.single_mut() {
         **text = format!(
-            "Turn: {} | Fragments: {}/{} | Mushrooms: {}/{} | Seed: {}",
+            "Turn: {} | Speed: {} | Fragments: {}/{} | Mushrooms: {}/{} | Seed: {}",
             game_state.turn,
+            speed.label(),
             game_state.fragments_fused,
             game_state.fragments_total,
             game_state.mushrooms_fruited,
@@ -175,7 +176,7 @@ pub fn update_hud(inputs: HudInputs, mut texts: HudTexts) {
         match state {
             Some(state) => {
                 **text = format!(
-                    "Region {} | S:{:.0} M:{:.0} B:{:.0} | Tiles:{}",
+                    "Region {}\nSugars: {:.0}\nMelanin: {:.0}\nBiomass: {:.0}\nTiles: {}",
                     state.region_id.0,
                     state.sugars,
                     state.melanin,

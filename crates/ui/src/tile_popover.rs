@@ -129,9 +129,9 @@ fn format_tile(hex: Hex, tile: &Tile, region_states: &RegionStates) -> String {
         TerrainType::Toxic => "Toxic",
         TerrainType::Surface => "Surface",
     };
-    let occupant = match tile.region_id {
-        None => "Empty".into(),
-        Some(rid) => format!("Player (region {})", rid.0),
+    let region_label = match tile.region_id {
+        Some(rid) => format!("Region {}", rid.0),
+        None => "unowned".into(),
     };
     let contents = tile.contents.map(|c| match c {
         TileContents::OrganicMatter => "Organic matter".into(),
@@ -143,29 +143,23 @@ fn format_tile(hex: Hex, tile: &Tile, region_states: &RegionStates) -> String {
         TileContents::PlantRoot(id) => format!("Plant root #{id}"),
     });
 
-    let mut out = format!(
-        "({}, {})\nTerrain: {terrain}\nOccupant: {occupant}",
-        hex.x, hex.y,
-    );
-    if let Some(c) = contents {
-        out.push_str(&format!("\nContents: {c}"));
-    }
+    let mut out = format!("({}, {})\nTerrain: {terrain}\n{region_label}", hex.x, hex.y,);
     if !tile.discovered {
         out.push_str("\n(undiscovered)");
     }
     out.push_str(&format!(
-        "\nSoil:{:.0} M:{:.0} R:{:.0} B:{:.0}",
-        tile.soil_richness * 100.0,
+        "\nBiomass: {:.2}\nMoisture: {:.0}\nRadiation: {:.0}\nSoil richness: {:.0}",
+        tile.biomass,
         tile.moisture * 100.0,
         tile.radiation * 100.0,
-        tile.biomass,
+        tile.soil_richness * 100.0,
     ));
+    if let Some(c) = contents {
+        out.push_str(&format!("\nContents: {c}"));
+    }
 
     if let Some(state) = tile.region_id.and_then(|rid| region_states.get(rid)) {
-        out.push_str(&format!(
-            "\nRegion {} | tiles {}",
-            state.region_id.0, state.tile_count,
-        ));
+        out.push_str(&format!("\nRegion tiles: {}", state.tile_count));
     }
 
     out
