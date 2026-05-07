@@ -589,7 +589,7 @@ git commit -m "perf(ui): popover skips Node/Text writes when values unchanged"
 - Relative tolerance: more code, no obvious benefit. Rejected.
 - Time-based throttling (rebuild at most every N seconds): hides legitimate fast topology changes. Rejected.
 
-- [ ] **Step 1: Write a test that small biomass drift does not flag the graph as changed**
+- [x] **Step 1: Write a test that small biomass drift does not flag the graph as changed**
 
 Add to `crates/render/src/data_layer.rs` test module:
 
@@ -678,12 +678,12 @@ fn large_biomass_change_rebuilds_graph() {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify the first one fails**
+- [x] **Step 2: Run tests to verify the first one fails**
 
 Run: `cargo nextest run -p kingdom_render small_biomass_drift_does_not_rebuild_graph`
 Expected: FAIL — current code rebuilds on any drift.
 
-- [ ] **Step 3: Add the tolerance constant and update the match functions**
+- [x] **Step 3: Add the tolerance constant and update the match functions**
 
 In `crates/render/src/data_layer.rs`, near the top of the file (after imports):
 
@@ -717,17 +717,17 @@ fn edges_match(a: &[BranchEdge], b: &[BranchEdge]) -> bool {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify both pass**
+- [x] **Step 4: Run tests to verify both pass**
 
 Run: `cargo nextest run -p kingdom_render`
 Expected: PASS for both `small_biomass_drift_does_not_rebuild_graph` and `large_biomass_change_rebuilds_graph`, plus all prior tests.
 
-- [ ] **Step 5: Run full lint pass**
+- [x] **Step 5: Run full lint pass**
 
 Run: `just lint`
 Expected: no warnings.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add crates/render/src/data_layer.rs

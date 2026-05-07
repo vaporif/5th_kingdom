@@ -4,6 +4,13 @@ use bevy::prelude::*;
 use hexx::Hex;
 use kingdom_core::{GridPos, GridWorld, HexLayout, RegionId, SelectedRegion, Tile};
 
+/// Biomass drift below this threshold does not trigger a network mesh rebuild.
+/// Density flow updates biomass continuously by ~0.01-0.5 per tick; rebuilding
+/// the entire branch tree every tick costs hundreds of Mesh+Material asset
+/// inserts. Real topology changes (tiles claimed/lost) bypass this via the
+/// length and key checks.
+const NETWORK_REBUILD_BIOMASS_TOLERANCE: f32 = 0.05;
+
 #[derive(Resource, Default, Debug)]
 pub struct BranchGraph {
     pub nodes: HashMap<Hex, BranchNode>,
@@ -105,14 +112,18 @@ pub fn extract_branch_graph(
 
 fn nodes_match(a: &HashMap<Hex, BranchNode>, b: &HashMap<Hex, BranchNode>) -> bool {
     a.iter().all(|(k, v)| {
-        b.get(k)
-            .is_some_and(|other| other.biomass == v.biomass && other.region_id == v.region_id)
+        b.get(k).is_some_and(|other| {
+            other.region_id == v.region_id
+                && (other.biomass - v.biomass).abs() < NETWORK_REBUILD_BIOMASS_TOLERANCE
+        })
     })
 }
 
 fn edges_match(a: &[BranchEdge], b: &[BranchEdge]) -> bool {
     a.iter().zip(b.iter()).all(|(x, y)| {
-        x.from == y.from && x.to == y.to && (x.thickness - y.thickness).abs() < f32::EPSILON
+        x.from == y.from
+            && x.to == y.to
+            && (x.thickness - y.thickness).abs() < NETWORK_REBUILD_BIOMASS_TOLERANCE
     })
 }
 
@@ -435,6 +446,87 @@ mod tests {
 
         let graph = app.world().resource::<BranchGraph>();
         assert!(graph.nodes.is_empty(), "system ran despite gate");
+    }
+
+    #[test]
+    fn small_biomass_drift_does_not_rebuild_graph() {
+        use kingdom_core::RegionStates;
+
+        let mut app = test_app();
+        let rid = app
+            .world_mut()
+            .resource_mut::<RegionStates>()
+            .create_region();
+        let pos = Hex::new(0, 0);
+        let e = app
+            .world_mut()
+            .spawn((
+                GridPos(pos),
+                Tile {
+                    region_id: Some(rid),
+                    biomass: 1.0,
+                    ..Default::default()
+                },
+            ))
+            .id();
+        app.world_mut()
+            .resource_mut::<GridWorld>()
+            .tiles
+            .insert(pos, e);
+
+        app.add_systems(Update, extract_branch_graph);
+        app.update();
+
+        let first_tick = app.world().resource_ref::<BranchGraph>().last_changed();
+
+        app.world_mut().get_mut::<Tile>(e).unwrap().biomass = 1.0 + 0.01;
+        app.update();
+
+        let second_tick = app.world().resource_ref::<BranchGraph>().last_changed();
+        assert_eq!(
+            first_tick, second_tick,
+            "sub-tolerance biomass drift must not flag BranchGraph as changed"
+        );
+    }
+
+    #[test]
+    fn large_biomass_change_rebuilds_graph() {
+        use kingdom_core::RegionStates;
+
+        let mut app = test_app();
+        let rid = app
+            .world_mut()
+            .resource_mut::<RegionStates>()
+            .create_region();
+        let pos = Hex::new(0, 0);
+        let e = app
+            .world_mut()
+            .spawn((
+                GridPos(pos),
+                Tile {
+                    region_id: Some(rid),
+                    biomass: 1.0,
+                    ..Default::default()
+                },
+            ))
+            .id();
+        app.world_mut()
+            .resource_mut::<GridWorld>()
+            .tiles
+            .insert(pos, e);
+
+        app.add_systems(Update, extract_branch_graph);
+        app.update();
+        let first_tick = app.world().resource_ref::<BranchGraph>().last_changed();
+
+        app.world_mut().get_mut::<Tile>(e).unwrap().biomass = 5.0;
+        app.update();
+
+        let second_tick = app.world().resource_ref::<BranchGraph>().last_changed();
+        assert_ne!(
+            first_tick, second_tick,
+            "supra-tolerance biomass change must flag BranchGraph as changed"
+        );
     }
 
     #[test]
