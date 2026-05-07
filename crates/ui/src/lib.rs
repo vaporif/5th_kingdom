@@ -5,6 +5,7 @@ pub mod game_screens;
 mod hud;
 mod slot_machine_ui;
 mod spec_picker;
+mod tile_popover;
 
 pub use ability_bar::{
     AbilityBarRoot, AbilityButton, ActiveAbilityEffects, SporeButton, ability_click_system,
@@ -15,6 +16,7 @@ pub use slot_machine_ui::{
     SlotMachineState, slot_machine_selection_system, slot_machine_ui_system,
 };
 pub use spec_picker::{spec_picker_click_system, spec_picker_highlight_system, spec_picker_system};
+pub use tile_popover::update_tile_popover;
 
 pub struct HudPlugin;
 
@@ -22,7 +24,7 @@ impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HintsVisible>()
             .add_systems(Startup, spawn_hud)
-            .add_systems(Update, update_hud);
+            .add_systems(Update, (update_hud, update_tile_popover));
     }
 }
 
