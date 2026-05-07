@@ -490,7 +490,7 @@ Expected: PASS.
 Run: `just lint`
 Expected: no warnings.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add crates/render/src/data_layer.rs
