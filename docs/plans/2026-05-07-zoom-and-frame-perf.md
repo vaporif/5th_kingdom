@@ -485,7 +485,7 @@ pub fn extract_selected_region_tiles(
 Run: `cargo nextest run -p kingdom_render`
 Expected: PASS.
 
-- [ ] **Step 5: Run full lint pass**
+- [x] **Step 5: Run full lint pass**
 
 Run: `just lint`
 Expected: no warnings.

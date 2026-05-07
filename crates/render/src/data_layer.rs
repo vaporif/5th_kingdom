@@ -40,6 +40,9 @@ pub struct SelectedRegionTiles {
     pub tiles: Vec<Hex>,
 }
 
+#[derive(Resource, Default, Debug)]
+pub struct SelectedRegionExtractionRuns(pub u64);
+
 pub fn extract_branch_graph(
     tiles: Query<(&GridPos, &Tile)>,
     grid: Res<GridWorld>,
@@ -229,9 +232,15 @@ pub fn extract_discovery_map(
 
 pub fn extract_selected_region_tiles(
     tiles: Query<(&GridPos, &Tile)>,
+    changed: Query<(), Changed<Tile>>,
     selected: Res<SelectedRegion>,
     mut selected_tiles: ResMut<SelectedRegionTiles>,
+    mut runs: ResMut<SelectedRegionExtractionRuns>,
 ) {
+    if !selected.is_changed() && changed.is_empty() {
+        return;
+    }
+    runs.0 += 1;
     let new_tiles: Vec<Hex> = match selected.region_id {
         Some(rid) => tiles
             .iter()
@@ -257,6 +266,7 @@ mod tests {
         app.init_resource::<RegionStates>();
         app.init_resource::<BranchGraph>();
         app.init_resource::<RegionHulls>();
+        app.init_resource::<SelectedRegionExtractionRuns>();
         app.insert_resource(create_hex_layout());
         app
     }
@@ -425,5 +435,58 @@ mod tests {
 
         let graph = app.world().resource::<BranchGraph>();
         assert!(graph.nodes.is_empty(), "system ran despite gate");
+    }
+
+    #[test]
+    fn selected_region_extraction_skips_when_unchanged() {
+        use kingdom_core::SelectedRegion;
+
+        let mut app = test_app();
+        app.init_resource::<SelectedRegion>();
+        app.init_resource::<SelectedRegionTiles>();
+        app.add_systems(Update, extract_selected_region_tiles);
+
+        let rid = app
+            .world_mut()
+            .resource_mut::<kingdom_core::RegionStates>()
+            .create_region();
+        let pos = Hex::new(2, 2);
+        let e = app
+            .world_mut()
+            .spawn((
+                GridPos(pos),
+                Tile {
+                    region_id: Some(rid),
+                    ..Default::default()
+                },
+            ))
+            .id();
+        app.world_mut()
+            .resource_mut::<GridWorld>()
+            .tiles
+            .insert(pos, e);
+        app.world_mut().resource_mut::<SelectedRegion>().region_id = Some(rid);
+
+        app.update();
+        let runs_after_frame_1 = app.world().resource::<SelectedRegionExtractionRuns>().0;
+        assert_eq!(
+            runs_after_frame_1, 1,
+            "body should run once when SelectedRegion changed"
+        );
+
+        app.update();
+        let runs_after_frame_2 = app.world().resource::<SelectedRegionExtractionRuns>().0;
+        assert_eq!(
+            runs_after_frame_2, 1,
+            "body must not run again when no input changed"
+        );
+
+        app.world_mut().get_mut::<Tile>(e).unwrap().biomass = 0.5;
+        app.update();
+        let runs_after_frame_3 = app.world().resource::<SelectedRegionExtractionRuns>().0;
+        assert_eq!(
+            runs_after_frame_3, 2,
+            "body must run again when any Tile changed"
+        );
     }
 }

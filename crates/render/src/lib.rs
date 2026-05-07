@@ -28,6 +28,7 @@ impl Plugin for RenderPlugin {
             .init_resource::<RegionHulls>()
             .init_resource::<data_layer::DiscoveryMap>()
             .init_resource::<data_layer::SelectedRegionTiles>()
+            .init_resource::<data_layer::SelectedRegionExtractionRuns>()
             .add_systems(
                 Update,
                 (
