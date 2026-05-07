@@ -32,6 +32,27 @@ pub struct NewOrganisms<'w, 's> {
     neutral_fungi: Query<'w, 's, (Entity, &'static GridPos), Added<NeutralFungusAgent>>,
 }
 
+fn spawn_sprite(
+    commands: &mut Commands,
+    source: Entity,
+    image: Handle<Image>,
+    color: Color,
+    size: Vec2,
+    world_pos: Vec2,
+) {
+    commands.spawn((
+        OrganismSprite,
+        OrganismSpriteLink(source),
+        Sprite {
+            image,
+            color,
+            custom_size: Some(size),
+            ..default()
+        },
+        Transform::from_translation(world_pos.extend(2.0)),
+    ));
+}
+
 pub fn spawn_organism_sprites(
     mut commands: Commands,
     sprites: Res<EntitySprites>,
@@ -41,93 +62,75 @@ pub fn spawn_organism_sprites(
     let size = organism_sprite_size(&layout);
 
     for (source, gpos) in new_organisms.fragments.iter() {
-        let world_pos = layout.hex_to_world_pos(gpos.0);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.fragment.clone(),
-                color: Color::srgb(0.9, 0.7, 1.0),
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(gpos.0);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.fragment.clone(),
+            Color::srgb(0.9, 0.7, 1.0),
+            size,
+            pos,
+        );
     }
 
     for (source, gpos) in new_organisms.plants.iter() {
-        let world_pos = layout.hex_to_world_pos(gpos.0);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.plant_root.clone(),
-                color: Color::srgb(0.2, 0.7, 0.3),
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(gpos.0);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.plant_root.clone(),
+            Color::srgb(0.2, 0.7, 0.3),
+            size,
+            pos,
+        );
     }
 
     for (source, gpos) in new_organisms.fauna.iter() {
-        let world_pos = layout.hex_to_world_pos(gpos.0);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.fauna.clone(),
-                color: Color::srgb(0.7, 0.3, 0.2),
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(gpos.0);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.fauna.clone(),
+            Color::srgb(0.7, 0.3, 0.2),
+            size,
+            pos,
+        );
     }
 
     for (source, body) in new_organisms.fruiting.iter() {
-        let world_pos = layout.hex_to_world_pos(body.column_top);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.mushroom.clone(),
-                color: Color::WHITE,
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(body.column_top);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.mushroom.clone(),
+            Color::WHITE,
+            size,
+            pos,
+        );
     }
 
     for (source, mushroom) in new_organisms.mushrooms.iter() {
-        let world_pos = layout.hex_to_world_pos(mushroom.pos);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.mushroom.clone(),
-                color: Color::WHITE,
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(mushroom.pos);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.mushroom.clone(),
+            Color::WHITE,
+            size,
+            pos,
+        );
     }
 
     for (source, gpos) in new_organisms.neutral_fungi.iter() {
-        let world_pos = layout.hex_to_world_pos(gpos.0);
-        commands.spawn((
-            OrganismSprite,
-            OrganismSpriteLink(source),
-            Sprite {
-                image: sprites.neutral_fungus.clone(),
-                color: Color::srgb(0.5, 0.6, 0.4),
-                custom_size: Some(size),
-                ..default()
-            },
-            Transform::from_translation(world_pos.extend(2.0)),
-        ));
+        let pos = layout.hex_to_world_pos(gpos.0);
+        spawn_sprite(
+            &mut commands,
+            source,
+            sprites.neutral_fungus.clone(),
+            Color::srgb(0.5, 0.6, 0.4),
+            size,
+            pos,
+        );
     }
 }
 

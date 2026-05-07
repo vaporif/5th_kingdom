@@ -36,9 +36,8 @@ pub struct TileTapped {
     pub pos: Hex,
 }
 
-// State-machine drives bias painting from cursor + time + tiles + grid; the
-// 10-arg signature is the natural fit. `clippy::too_many_arguments` would
-// force an artificial wrapper struct that hurts readability.
+// Many params, but they're all genuinely needed by the state machine. Bundling
+// them into a wrapper struct just to silence clippy hurts readability.
 #[allow(clippy::too_many_arguments)]
 pub fn wisp_input_system(
     actions: Res<ActionState<Action>>,
