@@ -1,14 +1,8 @@
-use bevy::app::{App, Plugin, Update};
 use bevy::diagnostic::{
     DiagnosticsStore, EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin,
     SystemInformationDiagnosticsPlugin,
 };
-use bevy::ecs::system::Local;
-use bevy::ecs::world::World;
-use bevy::input::ButtonInput;
-use bevy::log::info;
-use bevy::prelude::{KeyCode, Res};
-use bevy::time::Time;
+use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 pub struct DebugPlugin;
@@ -49,11 +43,11 @@ fn log_diagnostics(world: &mut World, mut last_log: Local<f32>) {
         .get(&SystemInformationDiagnosticsPlugin::PROCESS_CPU_USAGE)
         .and_then(|d| d.smoothed())
         .unwrap_or(0.0);
-    let mem_gib = diagnostics
+    let mem_mib = diagnostics
         .get(&SystemInformationDiagnosticsPlugin::PROCESS_MEM_USAGE)
         .and_then(|d| d.smoothed())
-        .unwrap_or(0.0);
-    let mem_mib = mem_gib * 1024.0;
+        .unwrap_or(0.0)
+        * 1024.0;
 
     info!(
         "diag fps={fps:.1} frame_ms={frame_time_ms:.2} entities={entity_count:.0} \
