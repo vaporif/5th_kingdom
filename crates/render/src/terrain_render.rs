@@ -1,4 +1,7 @@
+use bevy::asset::RenderAssetUsages;
+use bevy::image::Image;
 use bevy::prelude::*;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_ecs_tilemap::prelude::*;
 use kingdom_core::{
     GridPos, GridWorld, Hex, HexLayout, HexOrientation, OffsetHexMode, TerrainType, Tile,
@@ -9,11 +12,10 @@ use crate::data_layer::DiscoveryMap;
 const MAP_WIDTH: u32 = 80;
 const MAP_HEIGHT: u32 = 60;
 
-const ATLAS_PATH: &str = "sprites/terrain/terrain_atlas.png";
-
-// Cell size in the atlas PNG. `bevy_ecs_tilemap` samples one of these per tile.
-const TILE_PX_W: f32 = 49.0; // matches the generator's TILE_W
-const TILE_PX_H: f32 = 56.0;
+// Rendered tile size in world units. Larger than GRID_PX_W/H so adjacent tile
+// sprites overlap by ~5px and hex-edge AA seams don't show through.
+const TILE_PX_W: f32 = 54.0;
+const TILE_PX_H: f32 = 60.0;
 
 // Spacing between tile centers in world space. Must match hexx's column / row
 // strides for scale=28 pointy-top so other layers (splines, sprites, highlights)
@@ -22,14 +24,21 @@ const TILE_PX_H: f32 = 56.0;
 const GRID_PX_W: f32 = 28.0 * 1.732_050_8;
 const GRID_PX_H: f32 = 56.0;
 
-/// One row per `TerrainType` variant. Checked against the atlas at runtime
-/// in `assert_atlas_addresses_all_terrains`.
-const REQUIRED_TERRAIN_INDICES: u32 = 7;
+const TERRAIN_TYPES: [TerrainType; 7] = [
+    TerrainType::Soil,
+    TerrainType::Rock,
+    TerrainType::Water,
+    TerrainType::Root,
+    TerrainType::Ruin,
+    TerrainType::Toxic,
+    TerrainType::Surface,
+];
 
 const TERRAIN_Z: f32 = -10.0;
 
-const VISIBLE: LinearRgba = LinearRgba::new(1.0, 1.0, 1.0, 1.0);
-const HIDDEN: LinearRgba = LinearRgba::new(0.18, 0.18, 0.22, 1.0);
+const LIT_TOP: LinearRgba = LinearRgba::new(1.05, 0.95, 0.78, 1.0);
+const LIT_BOTTOM: LinearRgba = LinearRgba::new(0.55, 0.62, 0.85, 1.0);
+const HIDDEN: LinearRgba = LinearRgba::new(0.04, 0.04, 0.06, 1.0);
 
 pub fn terrain_base_color(terrain: TerrainType) -> LinearRgba {
     match terrain {
@@ -70,32 +79,94 @@ pub fn hex_to_tile_pos(hex: Hex) -> Option<TilePos> {
     })
 }
 
-fn discovery_color(level: f32) -> Color {
-    HIDDEN.mix(&VISIBLE, level).into()
+fn depth_lit_color(hex: Hex) -> LinearRgba {
+    let [_, row] = hex.to_offset_coordinates(OffsetHexMode::Odd, HexOrientation::Pointy);
+    let depth = (row as f32 / (MAP_HEIGHT as f32 - 1.0)).clamp(0.0, 1.0);
+    LIT_TOP.mix(&LIT_BOTTOM, depth)
 }
 
 fn tile_color_for(discovery: &DiscoveryMap, hex: Hex) -> Color {
     let level = discovery.discovered.get(&hex).copied().unwrap_or(0.0);
-    discovery_color(level)
+    HIDDEN.mix(&depth_lit_color(hex), level).into()
 }
 
-/// Holds the atlas handle so `assert_atlas_addresses_all_terrains` can re-read
-/// the image once Bevy's async loader populates `Assets<Image>`. Cleared once
-/// the check passes.
-#[derive(Resource, Default)]
-pub struct PendingAtlasCheck(pub Option<Handle<Image>>);
+fn linear_to_srgb_byte(linear: f32) -> u8 {
+    let srgb = if linear <= 0.003_130_8 {
+        12.92 * linear
+    } else {
+        1.055 * linear.powf(1.0 / 2.4) - 0.055
+    };
+    (srgb * 255.0).clamp(0.0, 255.0) as u8
+}
+
+fn pointy_hex_alpha(dx: f32, dy: f32, r: f32) -> f32 {
+    // Pointy-top hex with circumradius r centered at origin. Returns smooth
+    // coverage in 0..1 with a 1-pixel anti-alias band at the edge.
+    let sqrt3 = 3.0_f32.sqrt();
+    let ax = dx.abs();
+    let ay = dy.abs();
+    let dist_vert = r * sqrt3 * 0.5 - ax;
+    let dist_diag = (r * sqrt3 - ax - ay * sqrt3) * 0.5;
+    let signed = dist_vert.min(dist_diag);
+    (signed + 0.5).clamp(0.0, 1.0)
+}
+
+fn build_terrain_atlas() -> Image {
+    let cell_w = TILE_PX_W as u32;
+    let cell_h = TILE_PX_H as u32;
+    let n = TERRAIN_TYPES.len() as u32;
+    let total_h = cell_h * n;
+    let mut data = vec![0u8; (cell_w * total_h * 4) as usize];
+
+    let center_x = cell_w as f32 * 0.5;
+    let center_y = cell_h as f32 * 0.5;
+    // Inscribe the hex so it fits the cell on whichever axis is tighter.
+    let hex_radius = (cell_h as f32 * 0.5).min(cell_w as f32 / 3.0_f32.sqrt());
+
+    for (idx, &terrain) in TERRAIN_TYPES.iter().enumerate() {
+        let linear = terrain_base_color(terrain);
+        let r = linear_to_srgb_byte(linear.red);
+        let g = linear_to_srgb_byte(linear.green);
+        let b = linear_to_srgb_byte(linear.blue);
+        let row_offset = idx as u32 * cell_h;
+
+        for py in 0..cell_h {
+            for px in 0..cell_w {
+                let dx = (px as f32 + 0.5) - center_x;
+                let dy = (py as f32 + 0.5) - center_y;
+                let alpha = pointy_hex_alpha(dx, dy, hex_radius);
+                let global_y = row_offset + py;
+                let i = ((global_y * cell_w + px) * 4) as usize;
+                data[i] = r;
+                data[i + 1] = g;
+                data[i + 2] = b;
+                data[i + 3] = (alpha * 255.0).clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
+    Image::new(
+        Extent3d {
+            width: cell_w,
+            height: total_h,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    )
+}
 
 pub fn spawn_terrain_tilemap(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    mut images: ResMut<Assets<Image>>,
     grid: Res<GridWorld>,
     layout: Res<HexLayout>,
     discovery: Res<DiscoveryMap>,
     tiles: Query<&Tile>,
-    mut pending: ResMut<PendingAtlasCheck>,
 ) {
-    let texture: Handle<Image> = asset_server.load(ATLAS_PATH);
-    pending.0 = Some(texture.clone());
+    let texture: Handle<Image> = images.add(build_terrain_atlas());
 
     let map_size = TilemapSize {
         x: MAP_WIDTH,
@@ -202,34 +273,6 @@ pub fn terrain_tile_update_system(
     }
 }
 
-/// Verify the atlas can address all `REQUIRED_TERRAIN_INDICES` once it
-/// lands in `Assets<Image>`, and panic if not. Asset loads are async, so
-/// this re-runs every Update until the handle resolves, then clears it.
-pub fn assert_atlas_addresses_all_terrains(
-    mut pending: ResMut<PendingAtlasCheck>,
-    images: Res<Assets<Image>>,
-) {
-    let Some(handle) = pending.0.as_ref() else {
-        return;
-    };
-    let Some(image) = images.get(handle) else {
-        return;
-    };
-    let w = image.texture_descriptor.size.width;
-    let h = image.texture_descriptor.size.height;
-    let cols = w / TILE_PX_W as u32;
-    let rows = h / TILE_PX_H as u32;
-    let addressable = cols.saturating_mul(rows);
-    assert!(
-        addressable >= REQUIRED_TERRAIN_INDICES,
-        "terrain atlas is too small: {w}x{h} px / {tw}x{th} tile = {addressable} indices, \
-         need at least {req} for all TerrainType variants",
-        tw = TILE_PX_W as u32,
-        th = TILE_PX_H as u32,
-        req = REQUIRED_TERRAIN_INDICES,
-    );
-    pending.0 = None;
-}
 
 #[cfg(test)]
 mod tests {
@@ -245,6 +288,48 @@ mod tests {
         let water = terrain_base_color(TerrainType::Water);
         assert!(water.blue > water.red);
         assert!(water.blue > water.green);
+    }
+
+    #[test]
+    fn pointy_hex_alpha_inside_is_opaque_outside_is_transparent() {
+        let r = (TILE_PX_H * 0.5).min(TILE_PX_W / 3.0_f32.sqrt());
+        assert!(
+            pointy_hex_alpha(0.0, 0.0, r) > 0.99,
+            "center should be fully opaque"
+        );
+        assert_eq!(
+            pointy_hex_alpha(TILE_PX_W * 0.5 - 0.5, TILE_PX_H * 0.5 - 0.5, r),
+            0.0,
+            "cell corner should be fully transparent (outside hex)"
+        );
+    }
+
+    #[test]
+    fn build_terrain_atlas_has_expected_dimensions() {
+        let atlas = build_terrain_atlas();
+        let size = atlas.texture_descriptor.size;
+        assert_eq!(size.width, TILE_PX_W as u32);
+        assert_eq!(size.height, TILE_PX_H as u32 * TERRAIN_TYPES.len() as u32);
+    }
+
+    #[test]
+    fn depth_gradient_top_is_warm_bottom_is_cool() {
+        let top = depth_lit_color(
+            Hex::from_offset_coordinates([0, 0], OffsetHexMode::Odd, HexOrientation::Pointy),
+        );
+        let bottom = depth_lit_color(Hex::from_offset_coordinates(
+            [0, (MAP_HEIGHT - 1) as i32],
+            OffsetHexMode::Odd,
+            HexOrientation::Pointy,
+        ));
+        assert!(
+            top.red > top.blue,
+            "surface tint should be warm (red>blue), got {top:?}"
+        );
+        assert!(
+            bottom.blue > bottom.red,
+            "deep tint should be cool (blue>red), got {bottom:?}"
+        );
     }
 }
 
@@ -276,7 +361,6 @@ mod tilemap_tests {
         // values back; they don't need the render pipeline. Skip the plugin.
         app.init_resource::<GridWorld>();
         app.init_resource::<crate::data_layer::DiscoveryMap>();
-        app.init_resource::<PendingAtlasCheck>();
         app.insert_resource(create_hex_layout());
         // Deliberately do NOT register `extract_discovery_map`: it calls
         // `discovered.clear()` every Update tick (data_layer.rs), which would

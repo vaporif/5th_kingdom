@@ -3,21 +3,24 @@ use std::collections::{HashMap, HashSet};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use kingdom_core::{
-    BIAS_GLOW_VISIBLE_THRESHOLD, BIAS_MAGNITUDE_CAP, FaunaAgent, FragmentAgent, FruitingBody,
-    GridPos, Hex, HexLayout, MushroomEntity, NeutralFungusAgent, OrganismSpriteLink,
-    PlantRootAgent, Tile,
+    FaunaAgent, FragmentAgent, FruitingBody, GridPos, Hex, HexLayout, MushroomEntity,
+    NeutralFungusAgent, OrganismSpriteLink, PlantRootAgent, Tile, BIAS_GLOW_VISIBLE_THRESHOLD,
+    BIAS_MAGNITUDE_CAP,
 };
 
 use crate::assets::EntitySprites;
-use crate::data_layer::SelectedRegionTiles;
+use crate::data_layer::{DiscoveryMap, SelectedRegionTiles};
 
 #[derive(Component)]
 pub struct OrganismSprite;
 
+#[derive(Component)]
+pub struct OrganismHex(pub Hex);
+
 #[must_use]
 pub fn organism_sprite_size(layout: &HexLayout) -> Vec2 {
     let inner_radius = layout.scale.x * 3.0_f32.sqrt() / 2.0;
-    Vec2::splat(inner_radius * 1.4)
+    Vec2::splat(inner_radius * 2.0)
 }
 
 #[derive(SystemParam)]
@@ -36,10 +39,12 @@ fn spawn_sprite(
     image: Handle<Image>,
     color: Color,
     size: Vec2,
+    hex: Hex,
     world_pos: Vec2,
 ) {
     commands.spawn((
         OrganismSprite,
+        OrganismHex(hex),
         OrganismSpriteLink(source),
         Sprite {
             image,
@@ -67,6 +72,7 @@ pub fn spawn_organism_sprites(
             sprites.fragment.clone(),
             Color::srgb(0.9, 0.7, 1.0),
             size,
+            gpos.0,
             pos,
         );
     }
@@ -79,6 +85,7 @@ pub fn spawn_organism_sprites(
             sprites.plant_root.clone(),
             Color::srgb(0.2, 0.7, 0.3),
             size,
+            gpos.0,
             pos,
         );
     }
@@ -91,6 +98,7 @@ pub fn spawn_organism_sprites(
             sprites.fauna.clone(),
             Color::srgb(0.7, 0.3, 0.2),
             size,
+            gpos.0,
             pos,
         );
     }
@@ -103,6 +111,7 @@ pub fn spawn_organism_sprites(
             sprites.mushroom.clone(),
             Color::WHITE,
             size,
+            body.column_top,
             pos,
         );
     }
@@ -115,6 +124,7 @@ pub fn spawn_organism_sprites(
             sprites.mushroom.clone(),
             Color::WHITE,
             size,
+            mushroom.pos,
             pos,
         );
     }
@@ -127,8 +137,24 @@ pub fn spawn_organism_sprites(
             sprites.neutral_fungus.clone(),
             Color::srgb(0.5, 0.6, 0.4),
             size,
+            gpos.0,
             pos,
         );
+    }
+}
+
+pub fn fade_organism_sprites_by_discovery(
+    discovery: Res<DiscoveryMap>,
+    mut sprites: Query<(&OrganismHex, &mut Sprite), With<OrganismSprite>>,
+) {
+    if !discovery.is_changed() {
+        return;
+    }
+    for (hex, mut sprite) in &mut sprites {
+        let level = discovery.discovered.get(&hex.0).copied().unwrap_or(0.0);
+        let mut srgba = sprite.color.to_srgba();
+        srgba.alpha = level;
+        sprite.color = srgba.into();
     }
 }
 
@@ -313,9 +339,9 @@ mod tests {
     fn organism_sprite_size_is_proportional_to_hex() {
         let layout = create_hex_layout();
         let size = organism_sprite_size(&layout);
-        // inner_radius = 28.0 * sqrt(3)/2 ~= 24.25, * 1.4 ~= 33.9
-        assert!(size.x >= 30.0, "sprite too small: {}", size.x);
-        assert!(size.x <= 40.0, "sprite too large: {}", size.x);
+        // inner_radius = 28.0 * sqrt(3)/2 ~= 24.25, * 2.0 ~= 48.5
+        assert!(size.x >= 45.0, "sprite too small: {}", size.x);
+        assert!(size.x <= 55.0, "sprite too large: {}", size.x);
     }
 }
 
@@ -323,7 +349,7 @@ mod tests {
 mod glow_diff_tests {
     use super::*;
     use bevy::MinimalPlugins;
-    use kingdom_core::{BIAS_GLOW_VISIBLE_THRESHOLD, GridPos, Tile, create_hex_layout};
+    use kingdom_core::{create_hex_layout, GridPos, Tile, BIAS_GLOW_VISIBLE_THRESHOLD};
 
     fn test_app() -> App {
         let mut app = App::new();

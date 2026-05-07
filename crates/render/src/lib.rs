@@ -23,7 +23,6 @@ impl Plugin for RenderPlugin {
             .add_plugins(Material2dPlugin::<atmosphere::VignetteMaterial>::default())
             .add_plugins(Material2dPlugin::<network_render::NetworkMaterial>::default())
             .init_resource::<assets::EntitySprites>()
-            .init_resource::<terrain_render::PendingAtlasCheck>()
             .init_resource::<BranchGraph>()
             .init_resource::<RegionHulls>()
             .init_resource::<data_layer::DiscoveryMap>()
@@ -38,13 +37,7 @@ impl Plugin for RenderPlugin {
                 )
                     .in_set(SimulationSystems),
             )
-            .add_systems(
-                Update,
-                (
-                    data_layer::extract_selected_region_tiles,
-                    terrain_render::assert_atlas_addresses_all_terrains,
-                ),
-            )
+            .add_systems(Update, data_layer::extract_selected_region_tiles)
             .add_systems(
                 Startup,
                 (
@@ -61,6 +54,7 @@ impl Plugin for RenderPlugin {
                     (
                         entity_render::despawn_orphaned_organism_sprites,
                         entity_render::spawn_organism_sprites,
+                        entity_render::fade_organism_sprites_by_discovery,
                     )
                         .chain(),
                     entity_render::bias_glow_render_system,
