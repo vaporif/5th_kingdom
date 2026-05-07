@@ -559,12 +559,12 @@ mod popover_tests {
 Run: `cargo nextest run -p kingdom_ui`
 Expected: PASS.
 
-- [ ] **Step 5: Run full lint pass**
+- [x] **Step 5: Run full lint pass**
 
 Run: `just lint`
 Expected: no warnings.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add crates/ui/src/tile_popover.rs

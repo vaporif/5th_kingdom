@@ -48,9 +48,17 @@ pub fn update_tile_popover(
     };
 
     if let Ok((_, mut node, _)) = existing.single_mut() {
-        node.left = Val::Px(payload.pos.x);
-        node.top = Val::Px(payload.pos.y);
-        if let Ok(mut t) = text.single_mut() {
+        let new_left = Val::Px(payload.pos.x);
+        let new_top = Val::Px(payload.pos.y);
+        if node.left != new_left {
+            node.left = new_left;
+        }
+        if node.top != new_top {
+            node.top = new_top;
+        }
+        if let Ok(mut t) = text.single_mut()
+            && **t != payload.text
+        {
             **t = payload.text;
         }
     } else {
@@ -163,4 +171,15 @@ fn format_tile(hex: Hex, tile: &Tile, region_states: &RegionStates) -> String {
     }
 
     out
+}
+
+#[cfg(test)]
+mod popover_tests {
+    use bevy::prelude::*;
+
+    #[test]
+    fn val_px_equality_holds_for_same_value() {
+        assert_eq!(Val::Px(1.0), Val::Px(1.0));
+        assert_ne!(Val::Px(1.0), Val::Px(2.0));
+    }
 }
