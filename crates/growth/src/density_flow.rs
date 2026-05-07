@@ -45,7 +45,13 @@ pub fn density_flow_system(
     mut rng: ResMut<DensityFlowRng>,
     mut discovered: MessageWriter<TileDiscovered>,
 ) {
-    let snapshot: HashMap<Hex, FlowSnapshot> = tiles
+    let snapshot = build_snapshot(&tiles);
+    let deltas = compute_deltas(&snapshot, &grid, &layout, &mut rng.0);
+    apply_deltas(&mut tiles, &deltas, &mut discovered);
+}
+
+fn build_snapshot(tiles: &Query<(&GridPos, &mut Tile)>) -> HashMap<Hex, FlowSnapshot> {
+    tiles
         .iter()
         .map(|(gp, t)| {
             (
@@ -60,8 +66,15 @@ pub fn density_flow_system(
                 },
             )
         })
-        .collect();
+        .collect()
+}
 
+fn compute_deltas(
+    snapshot: &HashMap<Hex, FlowSnapshot>,
+    grid: &GridWorld,
+    layout: &HexLayout,
+    rng: &mut StdRng,
+) -> HashMap<Hex, TileDelta> {
     let mut deltas: HashMap<Hex, TileDelta> = HashMap::new();
 
     // Sort so rng draws are deterministic across runs with the same seed.
@@ -75,34 +88,7 @@ pub fn density_flow_system(
         }
         let Some(rid) = snap.region_id else { continue };
 
-        let from_world = layout.hex_to_world_pos(pos);
-        let mut candidates: Vec<(Hex, f32)> = Vec::new();
-        for (npos, _) in grid.neighbors(pos) {
-            let Some(&n_snap) = snapshot.get(&npos) else {
-                continue;
-            };
-            if !n_snap.passable {
-                continue;
-            }
-            if let Some(other) = n_snap.region_id
-                && other != rid
-            {
-                continue;
-            }
-            let to_world = layout.hex_to_world_pos(npos);
-            let dir = (to_world - from_world).normalize_or_zero();
-            let bias_score = snap.bias.dot(dir).max(0.0);
-            let gradient_score = snap.gradient.dot(dir).max(0.0);
-            let mut weight = AUTONOMOUS_FLOW_WEIGHT
-                + BIASED_FLOW_WEIGHT * bias_score
-                + GRADIENT_FLOW_WEIGHT * gradient_score;
-            let noise = (rng.0.random::<f32>() - 0.5) * FLOW_NOISE;
-            weight *= 1.0 + noise;
-            if weight > 0.0 {
-                candidates.push((npos, weight));
-            }
-        }
-
+        let candidates = score_candidates(pos, snap, rid, snapshot, grid, layout, rng);
         let total: f32 = candidates.iter().map(|&(_, w)| w).sum();
         if total <= 0.0 {
             continue;
@@ -125,6 +111,53 @@ pub fn density_flow_system(
         }
     }
 
+    deltas
+}
+
+fn score_candidates(
+    pos: Hex,
+    snap: FlowSnapshot,
+    rid: RegionId,
+    snapshot: &HashMap<Hex, FlowSnapshot>,
+    grid: &GridWorld,
+    layout: &HexLayout,
+    rng: &mut StdRng,
+) -> Vec<(Hex, f32)> {
+    let from_world = layout.hex_to_world_pos(pos);
+    let mut candidates: Vec<(Hex, f32)> = Vec::new();
+    for (npos, _) in grid.neighbors(pos) {
+        let Some(&n_snap) = snapshot.get(&npos) else {
+            continue;
+        };
+        if !n_snap.passable {
+            continue;
+        }
+        if let Some(other) = n_snap.region_id
+            && other != rid
+        {
+            continue;
+        }
+        let to_world = layout.hex_to_world_pos(npos);
+        let dir = (to_world - from_world).normalize_or_zero();
+        let bias_score = snap.bias.dot(dir).max(0.0);
+        let gradient_score = snap.gradient.dot(dir).max(0.0);
+        let mut weight = AUTONOMOUS_FLOW_WEIGHT
+            + BIASED_FLOW_WEIGHT * bias_score
+            + GRADIENT_FLOW_WEIGHT * gradient_score;
+        let noise = (rng.random::<f32>() - 0.5) * FLOW_NOISE;
+        weight *= 1.0 + noise;
+        if weight > 0.0 {
+            candidates.push((npos, weight));
+        }
+    }
+    candidates
+}
+
+fn apply_deltas(
+    tiles: &mut Query<(&GridPos, &mut Tile)>,
+    deltas: &HashMap<Hex, TileDelta>,
+    discovered: &mut MessageWriter<TileDiscovered>,
+) {
     for (gpos, mut tile) in tiles.iter_mut() {
         let Some(delta) = deltas.get(&gpos.0) else {
             continue;
