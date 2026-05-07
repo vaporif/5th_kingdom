@@ -243,12 +243,12 @@ mod glow_diff_tests {
 }
 ```
 
-- [ ] **Step 2: Run the new tests to verify they fail**
+- [x] **Step 2: Run the new tests to verify they fail**
 
 Run: `cargo nextest run -p kingdom_render glow_diff_tests`
 Expected: at least one FAIL — current code despawns/respawns every frame, so `glow_entity_1 == glow_entity_2` fails.
 
-- [ ] **Step 3: Rewrite `bias_glow_render_system` as a diff system**
+- [x] **Step 3: Rewrite `bias_glow_render_system` as a diff system**
 
 Replace lines 168-200 in `crates/render/src/entity_render.rs` with the version below. Note: `bevy::utils::HashMap` was removed in Bevy 0.18 — use `std::collections::HashMap`. The file already imports `std::collections::HashSet` at line 1; extend that to `use std::collections::{HashMap, HashSet};`.
 
@@ -314,22 +314,22 @@ pub fn bias_glow_render_system(
 
 Note: `BiasGlowMarker` gains a `source: Entity` field. Update any other code using it (none expected — grep first to confirm).
 
-- [ ] **Step 4: Confirm no other callers expect the unit-struct shape**
+- [x] **Step 4: Confirm no other callers expect the unit-struct shape**
 
 Run: `grep -rn 'BiasGlowMarker' crates/ bin/`
 Expected: only references inside `entity_render.rs` and its tests.
 
-- [ ] **Step 5: Run the new tests to verify they pass**
+- [x] **Step 5: Run the new tests to verify they pass**
 
 Run: `cargo nextest run -p kingdom_render`
 Expected: PASS for `glow_diff_tests` and all existing tests.
 
-- [ ] **Step 6: Run full lint pass**
+- [x] **Step 6: Run full lint pass**
 
 Run: `just lint`
 Expected: no warnings.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```
 git add crates/render/src/entity_render.rs

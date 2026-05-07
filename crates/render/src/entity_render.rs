@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -166,36 +166,59 @@ pub fn despawn_orphaned_organism_sprites(
 }
 
 #[derive(Component)]
-pub struct BiasGlowMarker;
+pub struct BiasGlowMarker {
+    /// Tile entity this glow tracks. Used to despawn when its tile drops below threshold.
+    source: Entity,
+}
 
 pub fn bias_glow_render_system(
     mut commands: Commands,
     layout: Res<HexLayout>,
-    tiles: Query<(&GridPos, &Tile)>,
-    existing: Query<Entity, With<BiasGlowMarker>>,
+    changed_tiles: Query<(Entity, &GridPos, &Tile), Changed<Tile>>,
+    existing: Query<(Entity, &BiasGlowMarker)>,
 ) {
-    for entity in existing.iter() {
-        commands.entity(entity).despawn();
+    if changed_tiles.is_empty() {
+        return;
+    }
+
+    let mut existing_by_source: HashMap<Entity, Entity> =
+        HashMap::with_capacity(existing.iter().len());
+    for (glow_e, marker) in existing.iter() {
+        existing_by_source.insert(marker.source, glow_e);
     }
 
     let quad_size = Vec2::splat(layout.scale.x * 1.6);
 
-    for (gpos, tile) in tiles.iter() {
+    for (tile_e, gpos, tile) in changed_tiles.iter() {
         let mag = tile.priority_bias.length();
-        if mag < BIAS_GLOW_VISIBLE_THRESHOLD {
-            continue;
+        let visible = mag >= BIAS_GLOW_VISIBLE_THRESHOLD;
+        match (existing_by_source.get(&tile_e).copied(), visible) {
+            (Some(glow_e), false) => {
+                commands.entity(glow_e).despawn();
+            }
+            (Some(glow_e), true) => {
+                let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
+                commands.entity(glow_e).insert(Sprite {
+                    color: Color::srgba(1.0, 0.7, 0.3, alpha),
+                    custom_size: Some(quad_size),
+                    ..default()
+                });
+            }
+            (None, true) => {
+                let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
+                let world = layout.hex_to_world_pos(gpos.0);
+                commands.spawn((
+                    BiasGlowMarker { source: tile_e },
+                    Sprite {
+                        color: Color::srgba(1.0, 0.7, 0.3, alpha),
+                        custom_size: Some(quad_size),
+                        ..default()
+                    },
+                    Transform::from_xyz(world.x, world.y, 0.7),
+                ));
+            }
+            (None, false) => {}
         }
-        let alpha = (mag / BIAS_MAGNITUDE_CAP).min(1.0);
-        let world = layout.hex_to_world_pos(gpos.0);
-        commands.spawn((
-            BiasGlowMarker,
-            Sprite {
-                color: Color::srgba(1.0, 0.7, 0.3, alpha),
-                custom_size: Some(quad_size),
-                ..default()
-            },
-            Transform::from_xyz(world.x, world.y, 0.7),
-        ));
     }
 }
 
@@ -294,5 +317,93 @@ mod tests {
         // inner_radius = 28.0 * sqrt(3)/2 ~= 24.25, * 1.4 ~= 33.9
         assert!(size.x >= 30.0, "sprite too small: {}", size.x);
         assert!(size.x <= 40.0, "sprite too large: {}", size.x);
+    }
+}
+
+#[cfg(test)]
+mod glow_diff_tests {
+    use super::*;
+    use bevy::MinimalPlugins;
+    use kingdom_core::{BIAS_GLOW_VISIBLE_THRESHOLD, GridPos, Tile, create_hex_layout};
+
+    fn test_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(create_hex_layout());
+        app.add_systems(PostUpdate, bias_glow_render_system);
+        app
+    }
+
+    #[test]
+    fn glow_does_not_churn_when_tiles_unchanged() {
+        let mut app = test_app();
+        app.world_mut().spawn((
+            GridPos(Hex::new(0, 0)),
+            Tile {
+                priority_bias: Vec2::new(BIAS_GLOW_VISIBLE_THRESHOLD * 2.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        app.update();
+        let glow_count_1 = app
+            .world_mut()
+            .query::<&BiasGlowMarker>()
+            .iter(app.world())
+            .count();
+        assert_eq!(glow_count_1, 1);
+
+        let glow_entity_1 = app
+            .world_mut()
+            .query_filtered::<Entity, With<BiasGlowMarker>>()
+            .iter(app.world())
+            .next()
+            .unwrap();
+        app.update();
+        let glow_entity_2 = app
+            .world_mut()
+            .query_filtered::<Entity, With<BiasGlowMarker>>()
+            .iter(app.world())
+            .next()
+            .unwrap();
+        assert_eq!(
+            glow_entity_1, glow_entity_2,
+            "glow entity should not be despawned/respawned when tile is unchanged"
+        );
+    }
+
+    #[test]
+    fn glow_disappears_when_bias_drops_below_threshold() {
+        let mut app = test_app();
+        let tile_e = app
+            .world_mut()
+            .spawn((
+                GridPos(Hex::new(1, 1)),
+                Tile {
+                    priority_bias: Vec2::new(BIAS_GLOW_VISIBLE_THRESHOLD * 2.0, 0.0),
+                    ..Default::default()
+                },
+            ))
+            .id();
+        app.update();
+        assert_eq!(
+            app.world_mut()
+                .query::<&BiasGlowMarker>()
+                .iter(app.world())
+                .count(),
+            1
+        );
+
+        app.world_mut()
+            .get_mut::<Tile>(tile_e)
+            .unwrap()
+            .priority_bias = Vec2::ZERO;
+        app.update();
+        assert_eq!(
+            app.world_mut()
+                .query::<&BiasGlowMarker>()
+                .iter(app.world())
+                .count(),
+            0
+        );
     }
 }
