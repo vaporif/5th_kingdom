@@ -7,7 +7,6 @@ license-file.workspace = true
 [dependencies]
 bevy = { workspace = true }
 kingdom_core = { workspace = true }
-kingdom_fruiting = { workspace = true }
 kingdom_input = { workspace = true }
 kingdom_regions = { workspace = true }
 kingdom_units = { workspace = true }
