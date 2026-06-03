@@ -4068,7 +4068,6 @@ dependencies = [
  "image",
  "kingdom_ai",
  "kingdom_core",
- "kingdom_fruiting",
  "kingdom_growth",
  "kingdom_input",
  "kingdom_regions",
@@ -4094,15 +4093,6 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "hexx",
- "rand 0.10.1",
-]
-
-[[package]]
-name = "kingdom_fruiting"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "kingdom_core",
  "rand 0.10.1",
 ]
 
@@ -4152,7 +4142,6 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "kingdom_core",
- "kingdom_fruiting",
  "kingdom_input",
  "kingdom_regions",
  "kingdom_units",

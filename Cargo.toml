@@ -26,7 +26,6 @@ kingdom_regions = { path = "crates/regions" }
 kingdom_render = { path = "crates/render" }
 kingdom_input = { path = "crates/input" }
 kingdom_ai = { path = "crates/ai" }
-kingdom_fruiting = { path = "crates/fruiting" }
 kingdom_ui = { path = "crates/ui" }
 kingdom_units = { path = "crates/units" }
 
